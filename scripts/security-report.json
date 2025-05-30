@@ -1,0 +1,87 @@
+{
+  "timestamp": "2025-05-30T21:20:34.787Z",
+  "checks": {
+    "https": {
+      "status": "pass",
+      "details": {
+        "httpsServerExists": true,
+        "testScriptExists": true,
+        "middlewareExists": true,
+        "middlewareHasHTTPS": true,
+        "vercelConfigExists": true,
+        "hasHSTS": true
+      }
+    },
+    "securityHeaders": {
+      "status": "warning",
+      "details": {
+        "middlewareHeaders": 6,
+        "vercelHeaders": 7,
+        "totalRequired": 7,
+        "missingInMiddleware": [
+          "Strict-Transport-Security"
+        ],
+        "missingInVercel": []
+      }
+    },
+    "dependencies": {
+      "status": "pass",
+      "details": {
+        "totalVulnerabilities": 0,
+        "severityCounts": {
+          "critical": 0,
+          "high": 0,
+          "moderate": 0,
+          "low": 0
+        },
+        "auditOutput": {
+          "auditReportVersion": 2,
+          "vulnerabilities": {},
+          "metadata": {
+            "vulnerabilities": {
+              "info": 0,
+              "low": 0,
+              "moderate": 0,
+              "high": 0,
+              "critical": 0,
+              "total": 0
+            },
+            "dependencies": {
+              "prod": 113,
+              "dev": 615,
+              "optional": 92,
+              "peer": 0,
+              "peerOptional": 0,
+              "total": 788
+            }
+          }
+        }
+      }
+    },
+    "certificates": {
+      "status": "pass",
+      "details": {
+        "certificateExists": true,
+        "privateKeyExists": true,
+        "certificateDetails": {
+          "exists": true,
+          "hasValidFormat": true
+        }
+      }
+    },
+    "environment": {
+      "status": "pass",
+      "details": {
+        "gitignoreExists": true,
+        "gitignoreSecure": true,
+        "envExists": true,
+        "envExampleExists": true
+      }
+    }
+  },
+  "overall": "unknown",
+  "warnings": [
+    "Some security headers missing"
+  ],
+  "errors": []
+}

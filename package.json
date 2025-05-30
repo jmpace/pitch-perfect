@@ -4,13 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:https": "node scripts/https-dev-server.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --watchAll=false"
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "security:monitor": "node scripts/security-monitor.js",
+    "security:test": "node scripts/test-https.js",
+    "security:audit": "npm audit && npm run security:monitor"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
@@ -44,6 +48,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
+    "https": "^1.0.0",
     "jest": "^29.7.0",
     "jest-environment-node": "^30.0.0-beta.3",
     "node-mocks-http": "^1.17.2",
