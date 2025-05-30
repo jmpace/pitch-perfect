@@ -64,6 +64,14 @@
   "cleanUrls": true,
   "github": {
     "autoDeployment": true,
-    "enabled": true
+    "enabled": true,
+    "autoJobCancelation": true,
+    "deploymentEnabled": true,
+    "previewDeployments": true
+  },
+  "git": {
+    "deploymentEnabled": {
+      "*": true
+    }
   }
 } 
