@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
 
+## 🧪 Preview Deployment Test
+
+**Testing Vercel Preview Deployments** - This section is added to test that preview deployments are working correctly for pull requests and feature branches.
+
+- ✅ Branch: `test-preview-deployment`
+- ⏳ Waiting for preview URL generation
+- 🎯 Expected: Unique preview URL for this branch
+
 ## Getting Started
 
 First, run the development server:
