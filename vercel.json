@@ -4,8 +4,41 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "functions": {
+    "app/api/upload/**": {
+      "maxDuration": 60,
+      "memory": 512
+    },
+    "app/api/whisper/**": {
+      "maxDuration": 180,
+      "memory": 1024
+    },
+    "app/api/openai/**": {
+      "maxDuration": 60,
+      "memory": 512
+    },
+    "app/api/video/enhanced/**": {
+      "maxDuration": 300,
+      "memory": 3008
+    },
+    "app/api/video/**": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "app/api/storage/**": {
+      "maxDuration": 30,
+      "memory": 256
+    },
+    "app/api/health/**": {
+      "maxDuration": 10,
+      "memory": 128
+    },
+    "app/api/cleanup/**": {
+      "maxDuration": 120,
+      "memory": 512
+    },
     "app/api/**": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "memory": 256
     }
   },
   "headers": [
