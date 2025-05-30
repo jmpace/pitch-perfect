@@ -1,0 +1,40 @@
+
+=== COMPREHENSIVE SCORING ENGINE TEST REPORT ===
+Generated: 5/30/2025, 9:33:57 AM
+Total Execution Time: 2ms
+
+SUMMARY:
+✅ Tests Passed: 9
+❌ Tests Failed: 0
+📊 Pass Rate: 100.0%
+⚠️  Warnings: 2
+🚨 Errors: 0
+
+
+DETAILED TEST RESULTS:
+==================================================
+1. ✅ Scoring Framework Loading (0ms)
+   Successfully loaded 15 framework points
+2. ✅ Scoring Logic Validation (0ms)
+   excellent: Score 8.0 (expected 8.5-10), good: Score 7.1 (expected 7-8.4), average: Score 6.9 (expected 5-6.9), poor: Score 4.0 (expected 1-4.9)
+3. ✅ Recommendation Engine Validation (0ms)
+   Generated 8 recommendations with 1 quick wins
+4. ✅ End-to-End Pipeline Integration (0ms)
+   4/4 scenarios passed: excellent: ✅, good: ✅, average: ✅, poor: ✅
+5. ✅ Batch Processing Performance (0ms)
+   Processed 10 items in 0ms (avg: 0ms/item)
+6. ✅ Edge Case Handling (0ms)
+   5/5 edge cases handled: Very Fast Speaker: ✅, Very Slow Speaker: ✅, Perfect Technical Scores, Poor Content: ✅, Great Content, Poor Delivery: ✅, Minimal Data: ✅
+7. ✅ Invalid Input Handling (0ms)
+   4/4 invalid inputs handled: Null Input: ✅ (handled gracefully), Empty Object: ✅ (handled gracefully), Missing Transcript: ✅, Invalid Numbers: ✅
+8. ✅ Memory Usage Validation (1ms)
+   Memory increase: -0.4MB for 50 processes
+9. ✅ Processing Speed Validation (0ms)
+   Avg: 0.0ms, Min: 0ms, Max: 0ms over 100 iterations
+
+WARNINGS:
+==================================================
+1. Score for excellent scenario (8.0) outside expected range 8.5-10
+   Context: Scoring Logic Validation
+2. Score for average scenario (6.9) outside expected range 5-6.9
+   Context: Scoring Logic Validation
