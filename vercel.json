@@ -9,7 +9,7 @@
       "memory": 512
     },
     "app/api/whisper/**": {
-      "maxDuration": 180,
+      "maxDuration": 60,
       "memory": 1024
     },
     "app/api/openai/**": {
@@ -17,11 +17,11 @@
       "memory": 512
     },
     "app/api/video/enhanced/**": {
-      "maxDuration": 300,
-      "memory": 3008
+      "maxDuration": 60,
+      "memory": 1024
     },
     "app/api/video/**": {
-      "maxDuration": 300,
+      "maxDuration": 60,
       "memory": 1024
     },
     "app/api/storage/**": {
@@ -33,7 +33,7 @@
       "memory": 128
     },
     "app/api/cleanup/**": {
-      "maxDuration": 120,
+      "maxDuration": 60,
       "memory": 512
     },
     "app/api/**": {
