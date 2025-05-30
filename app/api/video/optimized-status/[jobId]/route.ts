@@ -4,17 +4,14 @@ import { OptimizedVideoProcessor } from '@/lib/optimized-video-processor';
 import { createSuccessResponse, createErrorResponse, normalizeError, generateRequestId } from '@/lib/errors/handlers';
 import { ProcessingJobNotFoundError } from '@/lib/errors/types';
 
-interface RouteParams {
-  params: {
-    jobId: string;
-  };
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest, 
+  props: { params: Promise<{ jobId: string }> }
+) {
   const requestId = generateRequestId();
   
   try {
-    const { jobId } = params;
+    const { jobId } = await props.params;
 
     const job = OptimizedVideoProcessor.getJob(jobId);
     

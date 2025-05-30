@@ -16,12 +16,12 @@ import {
 // GET /api/storage/video/[videoId] - Get all content for a specific video
 export async function GET(
   request: NextRequest,
-  { params }: { params: { videoId: string } }
+  props: { params: Promise<{ videoId: string }> }
 ) {
   const requestId = generateRequestId();
 
   try {
-    const { videoId } = params;
+    const { videoId } = await props.params;
     const { searchParams } = new URL(request.url);
     
     const contentTypeParam = searchParams.get('type');
@@ -119,12 +119,12 @@ export async function GET(
 // DELETE /api/storage/video/[videoId] - Delete all content for a specific video
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { videoId: string } }
+  props: { params: Promise<{ videoId: string }> }
 ) {
   const requestId = generateRequestId();
 
   try {
-    const { videoId } = params;
+    const { videoId } = await props.params;
     const { searchParams } = new URL(request.url);
     
     const contentTypeParam = searchParams.get('type');
