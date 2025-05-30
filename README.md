@@ -5,8 +5,9 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 **Testing Vercel Preview Deployments** - This section is added to test that preview deployments are working correctly for pull requests and feature branches.
 
 - ✅ Branch: `test-preview-deployment`
-- ⏳ Waiting for preview URL generation
-- 🎯 Expected: Unique preview URL for this branch
+- ✅ Preview URL Generated: https://pitch-perfect-aol5dxqij-jared-lookouttios-projects.vercel.app
+- ✅ Preview deployments are working correctly!
+- 🎯 Expected: Unique preview URL for this branch ✅ **SUCCESS**
 
 ## Getting Started
 
