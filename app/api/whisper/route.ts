@@ -19,11 +19,15 @@ import {
   ConfigurationError,
   ValidationError
 } from '@/lib/errors/types';
+import { enforceRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId();
 
   try {
+    // Apply IP-based rate limiting (additional layer to OpenAI rate limiting)
+    enforceRateLimit(request, 'AI_PROCESSING', requestId);
+    
     // Validate OpenAI configuration
     if (!process.env.OPENAI_API_KEY) {
       const configError = new ConfigurationError(
@@ -175,6 +179,9 @@ export async function GET(request: NextRequest) {
   const requestId = generateRequestId();
 
   try {
+    // Apply rate limiting for API status checks
+    enforceRateLimit(request, 'AI_PROCESSING', requestId);
+    
     // Basic configuration check
     const hasApiKey = !!process.env.OPENAI_API_KEY;
     

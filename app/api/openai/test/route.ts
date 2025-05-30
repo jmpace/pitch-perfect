@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { testOpenAIConnection, validateApiKey } from '@/lib/openai-config';
 import { createSanitizedHandler, SANITIZATION_CONFIGS, type SanitizedRequestData } from '@/lib/sanitization/middleware';
 import { sanitize } from '@/lib/sanitization';
+import { enforceRateLimit } from '@/lib/rate-limiter';
+import { generateRequestId } from '@/lib/errors/handlers';
 
 async function handleGet(request: NextRequest, sanitizedData: SanitizedRequestData) {
+  const requestId = generateRequestId();
+  
   try {
+    // Apply rate limiting for AI processing
+    enforceRateLimit(request, 'AI_PROCESSING', requestId);
+    
     // Check if API key is configured
     const apiKey = process.env.OPENAI_API_KEY;
     
@@ -66,7 +73,12 @@ async function handleGet(request: NextRequest, sanitizedData: SanitizedRequestDa
 }
 
 async function handlePost(request: NextRequest, sanitizedData: SanitizedRequestData) {
+  const requestId = generateRequestId();
+  
   try {
+    // Apply rate limiting for AI processing
+    enforceRateLimit(request, 'AI_PROCESSING', requestId);
+    
     // Use sanitized body data if available, otherwise parse manually
     let body: {
       apiKey?: string;

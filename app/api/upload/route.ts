@@ -12,7 +12,6 @@ import {
   validateStorageConfig,
   withErrorHandling,
   withTimeout,
-  checkRateLimit,
   logError
 } from '@/lib/errors/handlers';
 import { validateFile } from '@/lib/validation';
@@ -25,6 +24,7 @@ import {
 } from '@/lib/errors/types';
 import { createSanitizedHandler, SANITIZATION_CONFIGS, type SanitizedRequestData } from '@/lib/sanitization/middleware';
 import { sanitize } from '@/lib/sanitization';
+import { enforceRateLimit } from '@/lib/rate-limiter';
 
 async function handleUpload(request: NextRequest, sanitizedData: SanitizedRequestData) {
   const requestId = generateRequestId();
@@ -39,13 +39,8 @@ async function handleUpload(request: NextRequest, sanitizedData: SanitizedReques
       return createErrorResponse(configError);
     }
 
-    // Rate limiting check (based on IP) - use sanitized headers if available
-    const clientIP = (sanitizedData.headers['x-forwarded-for'] || 
-                     sanitizedData.headers['x-real-ip'] ||
-                     request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
-                     'unknown');
-    checkRateLimit(`upload:${clientIP}`, 10, 60000, requestId); // 10 uploads per minute
+    // Rate limiting check - new enhanced system handles IP extraction automatically
+    enforceRateLimit(request, 'UPLOAD', requestId);
 
     uploadId = generateUploadId();
     

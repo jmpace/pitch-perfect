@@ -239,6 +239,10 @@ export async function withTimeout<T>(
 // Rate limiting helper
 const rateLimitMap = new Map<string, number[]>();
 
+/**
+ * @deprecated Use the new rate limiting system in @/lib/rate-limiter.ts instead
+ * This function is kept for backward compatibility only
+ */
 export function checkRateLimit(
   identifier: string,
   limit: number = 100,
