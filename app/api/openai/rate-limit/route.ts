@@ -2,12 +2,14 @@ import { NextRequest } from 'next/server';
 import { rateLimiter } from '@/lib/openai-rate-limiter';
 import { createSuccessResponse, createErrorResponse, generateRequestId, normalizeError } from '@/lib/errors/handlers';
 import { checkAuthentication } from '@/lib/openai-auth';
+import { createSanitizedHandler, SANITIZATION_CONFIGS, type SanitizedRequestData } from '@/lib/sanitization/middleware';
+import { sanitize } from '@/lib/sanitization';
 
 /**
  * GET /api/openai/rate-limit
  * Get current rate limiting status and configuration
  */
-export async function GET(_request: NextRequest) {
+async function handleGet(_request: NextRequest, _sanitizedData: SanitizedRequestData) {
   const requestId = generateRequestId();
 
   try {
@@ -53,7 +55,7 @@ export async function GET(_request: NextRequest) {
  * POST /api/openai/rate-limit
  * Update rate limiting configuration or reset state
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest, sanitizedData: SanitizedRequestData) {
   const requestId = generateRequestId();
 
   try {
@@ -64,19 +66,29 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(authError);
     }
 
+    // Use sanitized body data if available, otherwise parse manually
     let body: {
       action?: string;
       limits?: Record<string, unknown>;
     };
-    try {
-      body = await request.json();
-    } catch (_error) {
-      const parseError = normalizeError(new Error('Invalid JSON in request body'), requestId);
-      return createErrorResponse(parseError);
+
+    if (sanitizedData.body) {
+      body = sanitizedData.body;
+    } else {
+      try {
+        const rawBody = await request.json();
+        body = sanitize.object(rawBody);
+      } catch (_error) {
+        const parseError = normalizeError(new Error('Invalid JSON in request body'), requestId);
+        return createErrorResponse(parseError);
+      }
     }
 
+    // Sanitize the action string
+    const action = body.action ? sanitize.textInput(body.action) : undefined;
+
     // Handle different actions
-    if (body.action === 'reset') {
+    if (action === 'reset') {
       // Reset the rate limiter state
       rateLimiter.reset();
       
@@ -86,20 +98,27 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       }, requestId);
 
-    } else if (body.action === 'update_limits') {
+    } else if (action === 'update_limits') {
       // Update rate limits (this would typically be done automatically via API headers)
       if (body.limits) {
+        // Sanitize the limits object
+        const sanitizedLimits = sanitize.object(body.limits);
+        
         // Note: In a real implementation, you might want to validate these limits
         // For now, we'll just acknowledge the request
         return createSuccessResponse({
           action: 'update_limits',
           message: 'Rate limits are automatically updated from OpenAI API responses',
           note: 'Manual limit updates are not supported for safety',
+          providedLimits: sanitizedLimits,
           timestamp: new Date().toISOString()
         }, requestId);
+      } else {
+        const limitsError = normalizeError(new Error('No limits provided for update_limits action'), requestId);
+        return createErrorResponse(limitsError);
       }
 
-    } else if (body.action === 'status') {
+    } else if (action === 'status') {
       // Return detailed status (same as GET but via POST for complex queries)
       const status = rateLimiter.getStatus();
       const queueInfo = rateLimiter.getQueueInfo();
@@ -114,7 +133,7 @@ export async function POST(request: NextRequest) {
       }, requestId);
 
     } else {
-      const actionError = normalizeError(new Error(`Unknown action: ${body.action}. Supported actions: reset, update_limits, status`), requestId);
+      const actionError = normalizeError(new Error(`Unknown action: ${action}. Supported actions: reset, update_limits, status`), requestId);
       return createErrorResponse(actionError);
     }
 
@@ -128,7 +147,7 @@ export async function POST(request: NextRequest) {
  * PATCH /api/openai/rate-limit
  * Simulate rate limit header updates (for testing/development)
  */
-export async function PATCH(request: NextRequest) {
+async function handlePatch(request: NextRequest, sanitizedData: SanitizedRequestData) {
   const requestId = generateRequestId();
 
   try {
@@ -139,31 +158,44 @@ export async function PATCH(request: NextRequest) {
       return createErrorResponse(authError);
     }
 
+    // Use sanitized body data if available, otherwise parse manually
     let body: {
       headers?: Record<string, string>;
     };
-    try {
-      body = await request.json();
-    } catch (_error) {
-      const parseError = normalizeError(new Error('Invalid JSON in request body'), requestId);
-      return createErrorResponse(parseError);
+
+    if (sanitizedData.body) {
+      body = sanitizedData.body;
+    } else {
+      try {
+        const rawBody = await request.json();
+        body = sanitize.object(rawBody);
+      } catch (_error) {
+        const parseError = normalizeError(new Error('Invalid JSON in request body'), requestId);
+        return createErrorResponse(parseError);
+      }
     }
 
     // Simulate updating rate limits from API headers
     if (body.headers) {
+      // Sanitize the headers object
+      const sanitizedHeaders = sanitize.object(body.headers);
       const mockHeaders = new Headers();
       
-      if (body.headers['x-ratelimit-limit-requests']) {
-        mockHeaders.set('x-ratelimit-limit-requests', body.headers['x-ratelimit-limit-requests']);
-      }
-      if (body.headers['x-ratelimit-limit-tokens']) {
-        mockHeaders.set('x-ratelimit-limit-tokens', body.headers['x-ratelimit-limit-tokens']);
-      }
-      if (body.headers['x-ratelimit-remaining-requests']) {
-        mockHeaders.set('x-ratelimit-remaining-requests', body.headers['x-ratelimit-remaining-requests']);
-      }
-      if (body.headers['x-ratelimit-remaining-tokens']) {
-        mockHeaders.set('x-ratelimit-remaining-tokens', body.headers['x-ratelimit-remaining-tokens']);
+      // Only allow specific rate limit headers and sanitize their values
+      const allowedHeaders = [
+        'x-ratelimit-limit-requests',
+        'x-ratelimit-limit-tokens',
+        'x-ratelimit-remaining-requests',
+        'x-ratelimit-remaining-tokens'
+      ];
+
+      for (const headerName of allowedHeaders) {
+        if (sanitizedHeaders[headerName]) {
+          const sanitizedValue = sanitize.textInput(sanitizedHeaders[headerName]);
+          if (sanitizedValue && /^\d+$/.test(sanitizedValue)) { // Only numeric values
+            mockHeaders.set(headerName, sanitizedValue);
+          }
+        }
       }
 
       rateLimiter.updateLimitsFromApiResponse(mockHeaders);
@@ -171,7 +203,7 @@ export async function PATCH(request: NextRequest) {
       return createSuccessResponse({
         action: 'simulate_headers',
         message: 'Rate limits updated from simulated headers',
-        updatedHeaders: body.headers,
+        updatedHeaders: Object.fromEntries(mockHeaders.entries()),
         timestamp: new Date().toISOString()
       }, requestId);
     }
@@ -183,4 +215,9 @@ export async function PATCH(request: NextRequest) {
     const normalizedError = normalizeError(error, requestId);
     return createErrorResponse(normalizedError);
   }
-} 
+}
+
+// Export sanitized handlers using STANDARD configuration
+export const GET = createSanitizedHandler(handleGet, SANITIZATION_CONFIGS.STANDARD);
+export const POST = createSanitizedHandler(handlePost, SANITIZATION_CONFIGS.STANDARD);
+export const PATCH = createSanitizedHandler(handlePatch, SANITIZATION_CONFIGS.STANDARD); 

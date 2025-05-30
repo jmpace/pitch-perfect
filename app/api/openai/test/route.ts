@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { testOpenAIConnection, validateApiKey } from '@/lib/openai-config';
+import { createSanitizedHandler, SANITIZATION_CONFIGS, type SanitizedRequestData } from '@/lib/sanitization/middleware';
+import { sanitize } from '@/lib/sanitization';
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest, sanitizedData: SanitizedRequestData) {
   try {
     // Check if API key is configured
     const apiKey = process.env.OPENAI_API_KEY;
@@ -63,10 +65,33 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest, sanitizedData: SanitizedRequestData) {
   try {
-    const body = await request.json();
-    const { apiKey: testApiKey } = body;
+    // Use sanitized body data if available, otherwise parse manually
+    let body: {
+      apiKey?: string;
+    };
+
+    if (sanitizedData.body) {
+      body = sanitizedData.body;
+    } else {
+      try {
+        const rawBody = await request.json();
+        body = sanitize.object(rawBody);
+      } catch (error) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid JSON in request body',
+            details: 'Please provide valid JSON',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Sanitize the API key input
+    const testApiKey = body.apiKey ? sanitize.textInput(body.apiKey) : undefined;
 
     if (!testApiKey) {
       return NextResponse.json(
@@ -74,6 +99,18 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'No API key provided',
           details: 'Please provide an API key in the request body',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check for dangerous content in the API key
+    if (sanitize.isDangerous(testApiKey)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid API key content',
+          details: 'API key contains invalid characters or patterns',
         },
         { status: 400 }
       );
@@ -110,4 +147,8 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
+
+// Export sanitized handlers using STANDARD configuration
+export const GET = createSanitizedHandler(handleGet, SANITIZATION_CONFIGS.STANDARD);
+export const POST = createSanitizedHandler(handlePost, SANITIZATION_CONFIGS.STANDARD); 

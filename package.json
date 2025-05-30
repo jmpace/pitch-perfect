@@ -14,7 +14,9 @@
     "test:ci": "jest --ci --coverage --watchAll=false",
     "security:monitor": "node scripts/security-monitor.js",
     "security:test": "node scripts/test-https.js",
-    "security:audit": "npm audit && npm run security:monitor"
+    "security:audit": "npm audit && npm run security:monitor",
+    "cors:test": "node scripts/test-cors.js",
+    "cors:verify": "npm run cors:test"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
@@ -23,12 +25,16 @@
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/postcss": "^4.1.8",
+    "@types/dompurify": "^3.0.5",
     "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/validator": "^13.15.1",
     "@vercel/blob": "^1.1.1",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dompurify": "^3.2.6",
     "fluent-ffmpeg": "^2.1.3",
+    "isomorphic-dompurify": "^2.25.0",
     "lucide-react": "^0.511.0",
     "nanoid": "^5.1.5",
     "next": "15.3.2",
@@ -37,7 +43,8 @@
     "postcss": "^8.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.3.0"
+    "tailwind-merge": "^3.3.0",
+    "validator": "^13.15.15"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

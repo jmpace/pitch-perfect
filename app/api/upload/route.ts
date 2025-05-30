@@ -23,8 +23,10 @@ import {
   ProcessingError,
   ConfigurationError
 } from '@/lib/errors/types';
+import { createSanitizedHandler, SANITIZATION_CONFIGS, type SanitizedRequestData } from '@/lib/sanitization/middleware';
+import { sanitize } from '@/lib/sanitization';
 
-export async function POST(request: NextRequest) {
+async function handleUpload(request: NextRequest, sanitizedData: SanitizedRequestData) {
   const requestId = generateRequestId();
   let progressTracker: UploadProgressTracker | null = null;
   let uploadId: string | null = null;
@@ -37,10 +39,12 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(configError);
     }
 
-    // Rate limiting check (based on IP)
-    const clientIP = request.headers.get('x-forwarded-for') || 
+    // Rate limiting check (based on IP) - use sanitized headers if available
+    const clientIP = (sanitizedData.headers['x-forwarded-for'] || 
+                     sanitizedData.headers['x-real-ip'] ||
+                     request.headers.get('x-forwarded-for') || 
                      request.headers.get('x-real-ip') || 
-                     'unknown';
+                     'unknown');
     checkRateLimit(`upload:${clientIP}`, 10, 60000, requestId); // 10 uploads per minute
 
     uploadId = generateUploadId();
@@ -52,10 +56,23 @@ export async function POST(request: NextRequest) {
       requestId
     );
 
-    const file = formData.get('file') as File;
+    let file = formData.get('file') as File;
 
-    // Validate file with comprehensive error handling
-    validateFile(file, requestId);
+    // Sanitize the filename for security
+    if (file) {
+      const sanitizedFilename = sanitize.filename(file.name);
+      // Create a new File object with the sanitized filename
+      file = new File([file], sanitizedFilename, {
+        type: file.type,
+        lastModified: file.lastModified,
+      });
+      
+      // Validate file with comprehensive error handling
+      validateFile(file, requestId);
+    } else {
+      // Validate with original validation if no file
+      validateFile(file, requestId);
+    }
 
     // Initialize progress tracking
     progressTracker = new UploadProgressTracker(uploadId, file.size);
@@ -166,7 +183,7 @@ export async function POST(request: NextRequest) {
       downloadUrl: blob.downloadUrl,
       size: file.size,
       type: file.type,
-      name: file.name,
+      name: file.name, // This is now the sanitized filename
       sessionId: `session_${uploadId}`,
       blobId: fileMetadata?.blobId,
       // Include cleanup info for transparency
@@ -192,15 +209,30 @@ export async function POST(request: NextRequest) {
       ? error 
       : normalizeError(error, requestId);
 
-    // Enhanced logging with context
+    // Enhanced logging with context - use sanitized headers where available
+    const clientIP = (sanitizedData.headers['x-forwarded-for'] || 
+                     sanitizedData.headers['x-real-ip'] ||
+                     request.headers.get('x-forwarded-for') || 
+                     request.headers.get('x-real-ip') || 
+                     'unknown');
+    const userAgent = sanitizedData.headers['user-agent'] || request.headers.get('user-agent');
     logError(storageError, {
       endpoint: '/api/upload',
       uploadId,
-      clientIP: request.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: request.headers.get('user-agent'),
+      clientIP: clientIP,
+      userAgent: userAgent,
       contentLength: request.headers.get('content-length'),
     });
 
     return createErrorResponse(storageError);
   }
-} 
+}
+
+// Export the sanitized handler using a custom UPLOAD configuration
+export const POST = createSanitizedHandler(handleUpload, {
+  sanitizeQuery: true,
+  sanitizeBody: false, // Don't sanitize file content
+  sanitizeHeaders: ['user-agent', 'x-forwarded-for', 'x-real-ip'],
+  blockDangerous: true,
+  maxBodySize: 100 * 1024 * 1024, // 100MB
+}); 
