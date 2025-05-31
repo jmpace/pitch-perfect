@@ -320,6 +320,12 @@ export class ScoreBasedRecommendationStrategy implements RecommendationStrategy 
     const { comprehensiveScore } = context;
     const engine = new RecommendationEngine();
 
+    // Validate that we have individual scores to work with
+    if (!comprehensiveScore?.individualScores || !Array.isArray(comprehensiveScore.individualScores)) {
+      console.warn('ScoreBasedRecommendationStrategy: No valid individualScores found in comprehensiveScore');
+      return recommendations;
+    }
+
     for (const score of comprehensiveScore.individualScores) {
       const frameworkPoint = FRAMEWORK_POINTS.find(p => p.id === score.pointId);
       if (!frameworkPoint) continue;

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ExportRecommendations from "@/components/export-recommendations";
 
 interface PageProps {
   params: Promise<{
@@ -160,9 +161,19 @@ export default async function ResultPage({ params }: PageProps) {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="px-8">
-              Download Full Report
-            </Button>
+            <ExportRecommendations
+              recommendations={[]} // TODO: Replace with actual recommendations data
+              context={{
+                sessionId: result.id,
+                overallAssessment: {
+                  primaryStrengths: result.detailedAnalysis.keyInsights,
+                  primaryWeaknesses: result.detailedAnalysis.recommendations.map(r => r.suggestion),
+                  scorePercentile: result.overallScore,
+                  competitivePosition: 'Above Average'
+                }
+              }}
+              variant="button"
+            />
             <Button variant="outline" size="lg" className="px-8">
               Share Results
             </Button>

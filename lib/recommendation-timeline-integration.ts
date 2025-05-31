@@ -58,6 +58,12 @@ export class TimelineIntegrationService {
    * Convert a RecommendationSet to timeline-enhanced recommendations
    */
   convertToTimelineRecommendations(recommendationSet: RecommendationSet): TimelineRecommendation[] {
+    // Handle null or invalid recommendations gracefully
+    if (!recommendationSet?.recommendations || !Array.isArray(recommendationSet.recommendations)) {
+      console.warn('TimelineIntegrationService: Invalid or empty recommendations provided');
+      return [];
+    }
+
     return recommendationSet.recommendations.map(rec => this.enhanceWithTimeline(rec));
   }
 
@@ -65,6 +71,11 @@ export class TimelineIntegrationService {
    * Convert a single recommendation to timeline-enhanced recommendation
    */
   enhanceWithTimeline(recommendation: Recommendation | PrioritizedRecommendation): TimelineRecommendation {
+    // Validate recommendation input
+    if (!recommendation || typeof recommendation !== 'object' || !recommendation.id) {
+      throw new Error('TimelineIntegrationService: Invalid recommendation provided to enhanceWithTimeline');
+    }
+
     const baseTimeline: TimelineProperties = {
       estimatedDuration: this.estimateDuration(recommendation),
       contextualTriggers: this.inferContextualTriggers(recommendation),
@@ -86,6 +97,14 @@ export class TimelineIntegrationService {
    * Initialize timeline with existing recommendations
    */
   initializeTimeline(recommendationSet: RecommendationSet, config?: Partial<TimelineConfig>): void {
+    // Validate input
+    if (!recommendationSet) {
+      console.warn('TimelineIntegrationService: No recommendation set provided to initializeTimeline');
+      this.state.recommendations = [];
+      this.state.lastUpdated = new Date();
+      return;
+    }
+
     if (config) {
       this.updateConfig(config);
     }
