@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { videoStatusTracker } from '@/lib/video-status-tracker';
 import { createErrorResponse, generateRequestId } from '@/lib/errors/handlers';
+import { withApiExceptionHandling } from '@/lib/errors/exception-handlers';
+import { ValidationError } from '@/lib/errors/types';
 
 export interface VideoMetricsResponse {
   summary: {
@@ -31,78 +33,59 @@ export interface VideoMetricsResponse {
   timestamp: string;
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const { searchParams } = new URL(request.url);
-    
-    // Parse optional time range
-    let timeRange: { start: Date; end: Date } | undefined;
-    const startParam = searchParams.get('start');
-    const endParam = searchParams.get('end');
-    
-    if (startParam && endParam) {
-      timeRange = {
-        start: new Date(startParam),
-        end: new Date(endParam)
-      };
-      
-      // Validate date range
-      if (isNaN(timeRange.start.getTime()) || isNaN(timeRange.end.getTime())) {
-        return NextResponse.json({
-          success: false,
-          error: {
-            code: 'INVALID_DATE_RANGE',
-            message: 'Invalid date format in start or end parameter',
-            timestamp: new Date().toISOString()
-          }
-        }, { status: 400 });
-      }
-      
-      if (timeRange.start >= timeRange.end) {
-        return NextResponse.json({
-          success: false,
-          error: {
-            code: 'INVALID_DATE_RANGE',
-            message: 'Start date must be before end date',
-            timestamp: new Date().toISOString()
-          }
-        }, { status: 400 });
-      }
-    }
-
-    const statistics = videoStatusTracker.getJobStatistics(timeRange);
-
-    const response: VideoMetricsResponse = {
-      summary: statistics.summary,
-      stageDistribution: statistics.stageDistribution,
-      errorAnalysis: {
-        topErrors: statistics.errorAnalysis.topErrors.map(error => ({
-          ...error,
-          lastOccurrence: error.lastOccurrence.toISOString()
-        })),
-        retryAnalysis: statistics.errorAnalysis.retryAnalysis
-      },
-      performanceAnalysis: statistics.performanceAnalysis,
-      timestamp: new Date().toISOString()
+async function handleGetMetrics(request: NextRequest): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
+  
+  // Parse optional time range
+  let timeRange: { start: Date; end: Date } | undefined;
+  const startParam = searchParams.get('start');
+  const endParam = searchParams.get('end');
+  
+  if (startParam && endParam) {
+    timeRange = {
+      start: new Date(startParam),
+      end: new Date(endParam)
     };
-
-    return NextResponse.json(response);
-
-  } catch (error: any) {
-    if (error.statusCode) {
-      return createErrorResponse(error);
+    
+    // Validate date range using standardized error handling
+    if (isNaN(timeRange.start.getTime()) || isNaN(timeRange.end.getTime())) {
+      throw new ValidationError(
+        'Invalid date format in start or end parameter',
+        { startParam, endParam, field: 'dateRange' }
+      );
     }
     
-    // Handle unexpected errors
-    const requestId = generateRequestId();
-    return NextResponse.json({
-      success: false,
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'An unexpected error occurred',
-        requestId,
-        timestamp: new Date().toISOString()
-      }
-    }, { status: 500 });
+    if (timeRange.start >= timeRange.end) {
+      throw new ValidationError(
+        'Start date must be before end date',
+        { 
+          startParam, 
+          endParam, 
+          field: 'dateRange',
+          validation: 'chronological_order' 
+        }
+      );
+    }
   }
-} 
+
+  const statistics = videoStatusTracker.getJobStatistics(timeRange);
+
+  const response: VideoMetricsResponse = {
+    summary: statistics.summary,
+    stageDistribution: statistics.stageDistribution,
+    errorAnalysis: {
+      topErrors: statistics.errorAnalysis.topErrors.map(error => ({
+        ...error,
+        lastOccurrence: error.lastOccurrence.toISOString()
+      })),
+      retryAnalysis: statistics.errorAnalysis.retryAnalysis
+    },
+    performanceAnalysis: statistics.performanceAnalysis,
+    timestamp: new Date().toISOString()
+  };
+
+  return NextResponse.json(response);
+}
+
+// Export the API handler wrapped with standardized exception handling
+export const GET = withApiExceptionHandling(handleGetMetrics); 

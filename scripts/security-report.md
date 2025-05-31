@@ -1,6 +1,6 @@
 # Security Monitoring Report
 
-**Generated:** 5/30/2025, 2:20:35 PM
+**Generated:** 5/30/2025, 3:26:06 PM
 **Overall Status:** ❓ UNKNOWN
 
 ## ⚠️ Warnings
@@ -26,10 +26,10 @@
 **Status:** warning
 
 **Details:**
-- middlewareHeaders: 6
+- middlewareHeaders: 4
 - vercelHeaders: 7
 - totalRequired: 7
-- missingInMiddleware: Strict-Transport-Security
+- missingInMiddleware: Strict-Transport-Security, Permissions-Policy, Content-Security-Policy
 - missingInVercel: None
 
 ### ✅ Dependencies

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { enhancedErrorHandler } from '@/lib/enhanced-error-handling';
 import { VideoProcessor } from '@/lib/video-processor';
 import { generateRequestId } from '@/lib/errors/handlers';
+import { corsify, defaultCORSConfig } from '@/lib/cors';
 
 export interface HealthCheckResponse {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -41,7 +42,7 @@ interface CircuitBreakerHealth {
 
 const startTime = Date.now();
 
-export async function GET(): Promise<NextResponse<HealthCheckResponse>> {
+async function healthHandler(): Promise<NextResponse<HealthCheckResponse>> {
   const requestId = generateRequestId();
   const timestamp = new Date().toISOString();
   
@@ -125,6 +126,13 @@ export async function GET(): Promise<NextResponse<HealthCheckResponse>> {
     return NextResponse.json(response, { status: 503 });
   }
 }
+
+// Apply CORS to the route handlers
+const corsHandlers = corsify({
+  GET: healthHandler
+}, defaultCORSConfig);
+
+export const { GET, OPTIONS } = corsHandlers;
 
 async function checkVideoProcessorHealth(): Promise<ServiceHealth> {
   try {

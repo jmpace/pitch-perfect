@@ -1,0 +1,140 @@
+[
+  {
+    "endpoint": "/api/health",
+    "description": "Health Endpoint (60/min limit)",
+    "limit": 60,
+    "testCount": 70,
+    "successful": 60,
+    "rateLimited": 10,
+    "duration": 79,
+    "statusCounts": {
+      "200": 60,
+      "429": 10
+    },
+    "rateLimitHeaders": [
+      {
+        "request": 1,
+        "limit": "60",
+        "remaining": "58",
+        "reset": "1748644207947"
+      },
+      {
+        "request": 2,
+        "limit": "60",
+        "remaining": "59",
+        "reset": "1748644207947"
+      },
+      {
+        "request": 3,
+        "limit": "60",
+        "remaining": "57",
+        "reset": "1748644207947"
+      },
+      {
+        "request": 4,
+        "limit": "60",
+        "remaining": "56",
+        "reset": "1748644207947"
+      },
+      {
+        "request": 5,
+        "limit": "60",
+        "remaining": "53",
+        "reset": "1748644207947"
+      }
+    ],
+    "isWorking": true
+  },
+  {
+    "endpoint": "/api/upload",
+    "description": "Upload Endpoint (10/min limit)",
+    "limit": 10,
+    "testCount": 15,
+    "successful": 0,
+    "rateLimited": 5,
+    "duration": 49,
+    "statusCounts": {
+      "405": 10,
+      "429": 5
+    },
+    "rateLimitHeaders": [
+      {
+        "request": 1,
+        "limit": "10",
+        "remaining": "9",
+        "reset": "1748644210012"
+      },
+      {
+        "request": 2,
+        "limit": "10",
+        "remaining": "8",
+        "reset": "1748644210012"
+      },
+      {
+        "request": 3,
+        "limit": "10",
+        "remaining": "5",
+        "reset": "1748644210012"
+      },
+      {
+        "request": 4,
+        "limit": "10",
+        "remaining": "6",
+        "reset": "1748644210012"
+      },
+      {
+        "request": 5,
+        "limit": "10",
+        "remaining": "7",
+        "reset": "1748644210012"
+      }
+    ],
+    "isWorking": true
+  },
+  {
+    "endpoint": "/api/openai",
+    "description": "AI Processing Endpoint (20/min limit)",
+    "limit": 20,
+    "testCount": 25,
+    "successful": 0,
+    "rateLimited": 5,
+    "duration": 402,
+    "statusCounts": {
+      "404": 20,
+      "429": 5
+    },
+    "rateLimitHeaders": [
+      {
+        "request": 1,
+        "limit": "20",
+        "remaining": "19",
+        "reset": "1748644212069"
+      },
+      {
+        "request": 2,
+        "limit": "20",
+        "remaining": "18",
+        "reset": "1748644212069"
+      },
+      {
+        "request": 3,
+        "limit": "20",
+        "remaining": "17",
+        "reset": "1748644212069"
+      },
+      {
+        "request": 4,
+        "limit": "20",
+        "remaining": "15",
+        "reset": "1748644212069"
+      },
+      {
+        "request": 5,
+        "limit": "20",
+        "remaining": "16",
+        "reset": "1748644212069"
+      }
+    ],
+    "isWorking": true
+  }
+]

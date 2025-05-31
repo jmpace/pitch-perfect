@@ -1,0 +1,83 @@
+{
+  "timestamp": "2025-05-30T22:27:43.728Z",
+  "tests": {
+    "securityHeaders": {
+      "passed": true,
+      "present": 4,
+      "missing": 0,
+      "details": {
+        "present": [
+          "x-content-type-options",
+          "x-frame-options",
+          "x-xss-protection",
+          "referrer-policy"
+        ],
+        "missing": []
+      }
+    },
+    "xssProtection": {
+      "passed": true,
+      "blocked": 6,
+      "vulnerable": 0,
+      "totalPayloads": 6
+    },
+    "inputValidation": {
+      "passed": 0,
+      "blocked": 7,
+      "totalInputs": 7
+    },
+    "rateLimiting": {
+      "passed": false,
+      "totalRequests": 15,
+      "rateLimited": 0,
+      "successful": 15,
+      "statusCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    "fileUploadSecurity": {
+      "passed": true,
+      "blocked": 4,
+      "allowed": 0,
+      "totalFiles": 4
+    },
+    "apiSecurity": {
+      "passed": false,
+      "secure": 2,
+      "insecure": 5,
+      "totalEndpoints": 7
+    },
+    "corsPolicy": {
+      "passed": true,
+      "blocked": 3,
+      "allowed": 0,
+      "totalOrigins": 3
+    }
+  },
+  "vulnerabilities": [],
+  "warnings": [
+    "Rate limiting may not be properly configured",
+    "API endpoint may be unsecured: /api/openai",
+    "API endpoint may be unsecured: /api/whisper",
+    "API endpoint may be unsecured: /api/video",
+    "API endpoint may be unsecured: /api/storage",
+    "API endpoint may be unsecured: /api/cleanup"
+  ],
+  "passed": 0,
+  "failed": 0,
+  "total": 0
+}

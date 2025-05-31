@@ -69,6 +69,12 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/dashboard-demo",
+      "regex": "^/dashboard\\-demo(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard\\-demo(?:/)?$"
+    },
+    {
       "page": "/results",
       "regex": "^/results(?:/)?$",
       "routeKeys": {},

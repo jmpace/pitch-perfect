@@ -133,3 +133,24 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom progress styles for upload states */
+@layer components {
+  .progress-success [data-progressbar] {
+    background-color: rgb(34 197 94);
+    transition: background-color 0.3s ease;
+  }
+  
+  .progress-error [data-progressbar] {
+    background-color: rgb(239 68 68);
+    transition: background-color 0.3s ease;
+  }
+  
+  .progress-success {
+    background-color: rgb(34 197 94 / 0.1);
+  }
+  
+  .progress-error {
+    background-color: rgb(239 68 68 / 0.1);
+  }
+}

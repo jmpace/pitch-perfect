@@ -1,0 +1,835 @@
+{
+  "preflightTests": [
+    {
+      "endpoint": "/api/health",
+      "origin": "https://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "http://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "https://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "http://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "https://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "http://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "https://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "http://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "https://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "http://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "https://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "http://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "https://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "http://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "https://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "http://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "https://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "http://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "https://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "http://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "https://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "http://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "https://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "http://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "https://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "http://localhost:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "https://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "http://127.0.0.1:3000",
+      "status": 400,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "access-control-allow-headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-API-Key",
+        "access-control-allow-credentials": "true",
+        "access-control-max-age": "86400"
+      },
+      "success": false
+    }
+  ],
+  "corsRequests": [
+    {
+      "endpoint": "/api/health",
+      "origin": "https://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "http://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "https://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "http://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "https://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "http://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "https://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "http://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "https://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "http://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "https://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "http://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "https://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "http://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "https://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "http://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "https://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "http://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "https://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "http://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "https://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "http://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "https://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "http://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "https://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "http://localhost:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://localhost:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "https://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "https://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "http://127.0.0.1:3000",
+      "status": 500,
+      "corsHeaders": {
+        "access-control-allow-origin": "http://127.0.0.1:3000",
+        "access-control-allow-credentials": "true",
+        "vary": "Accept-Encoding"
+      },
+      "success": false
+    }
+  ],
+  "blockingTests": [
+    {
+      "endpoint": "/api/health",
+      "origin": "https://malicious-site.com",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "http://bad-actor.org",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/health",
+      "origin": "https://attacker.net",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "https://malicious-site.com",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "http://bad-actor.org",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/openai",
+      "origin": "https://attacker.net",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "https://malicious-site.com",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "http://bad-actor.org",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/whisper",
+      "origin": "https://attacker.net",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "https://malicious-site.com",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "http://bad-actor.org",
+      "status": 429,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/video",
+      "origin": "https://attacker.net",
+      "status": 429,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "https://malicious-site.com",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "http://bad-actor.org",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/storage",
+      "origin": "https://attacker.net",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "https://malicious-site.com",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "http://bad-actor.org",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/cleanup",
+      "origin": "https://attacker.net",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "https://malicious-site.com",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "http://bad-actor.org",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    },
+    {
+      "endpoint": "/api/upload",
+      "origin": "https://attacker.net",
+      "status": 500,
+      "blocked": true,
+      "success": true
+    }
+  ],
+  "summary": {
+    "preflightSuccess": 0,
+    "preflightTotal": 28,
+    "corsRequestSuccess": 0,
+    "corsRequestTotal": 28,
+    "blockingSuccess": 21,
+    "blockingTotal": 21
+  }
+}

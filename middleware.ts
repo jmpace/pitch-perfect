@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimiter, RATE_LIMIT_CONFIGS } from './lib/rate-limiter';
+import { withApiKeyValidation } from './lib/api-keys/middleware';
+import { SecurityLevel } from './lib/api-keys/types';
 
 // CORS configuration
 const corsConfig = {
@@ -21,10 +23,29 @@ const corsConfig = {
     'Content-Type',
     'Date',
     'X-Api-Version',
-    'Authorization'
+    'Authorization',
+    'X-API-Key'  // Add support for API key header
   ],
   maxAge: 86400 // 24 hours
 };
+
+// Configure API key validation
+const apiKeyValidation = withApiKeyValidation({
+  enableValidation: true,
+  enableUsageTracking: true,
+  enableRateLimiting: true,
+  securityLevel: SecurityLevel.HIGH,
+  excludedPaths: [
+    '/api/health',
+    '/api/debug',
+    '/_next',
+    '/favicon.ico',
+    '/robots.txt',
+    '/api/security/api-keys' // Allow access to key management endpoint
+  ],
+  requireApiKey: false, // Only validate if present
+  logRequests: process.env.NODE_ENV === 'development'
+});
 
 function addCorsHeaders(response: NextResponse, origin?: string): NextResponse {
   // Set CORS headers
@@ -141,7 +162,7 @@ function applyRateLimit(request: NextRequest, response: NextResponse): NextRespo
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Get the current URL and origin
   const url = request.nextUrl.clone();
   const origin = request.headers.get('origin');
@@ -156,6 +177,19 @@ export function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === 'production' && url.protocol === 'http:') {
     url.protocol = 'https:';
     return NextResponse.redirect(url);
+  }
+
+  // Apply API key validation first (if applicable)
+  try {
+    const apiKeyValidationResponse = await apiKeyValidation(request);
+    
+    // If API key validation failed, return the validation response
+    if (apiKeyValidationResponse.status !== 200 && apiKeyValidationResponse.status !== undefined) {
+      return apiKeyValidationResponse;
+    }
+  } catch (error) {
+    console.error('[Middleware] API key validation error:', error);
+    // Continue with request if API key validation fails unexpectedly
   }
 
   // Apply rate limiting based on route
@@ -198,68 +232,39 @@ export function middleware(request: NextRequest) {
       const rateLimitHeaders = rateLimiter.getHeaders(rateLimitResult);
       addRateLimitHeaders(rateLimitResponse, rateLimitHeaders);
       
-      // Add CORS headers
-      const corsResponse = addCorsHeaders(rateLimitResponse, origin || undefined);
-
-      // Add security headers for development when they're not handled by Vercel
-      if (process.env.NODE_ENV === 'development') {
-        corsResponse.headers.set('X-Content-Type-Options', 'nosniff');
-        corsResponse.headers.set('X-Frame-Options', 'DENY');
-        corsResponse.headers.set('X-XSS-Protection', '1; mode=block');
-        corsResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        corsResponse.headers.set(
-          'Permissions-Policy', 
-          'camera=(), microphone=(), geolocation=(), browsing-topics=()'
-        );
-        corsResponse.headers.set(
-          'Content-Security-Policy',
-          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https: ws: wss:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
-        );
-      }
-
-      return corsResponse;
+      // Add CORS headers to error response
+      addCorsHeaders(rateLimitResponse, origin || undefined);
+      
+      return rateLimitResponse;
     }
 
-    // Request allowed, continue with normal processing
+    // Create successful response
     const response = NextResponse.next();
-
-    // Add rate limit headers to successful responses
+    
+    // Add rate limit headers to successful response  
     const rateLimiter = getRateLimiter();
     const rateLimitHeaders = rateLimiter.getHeaders(rateLimitResult);
     addRateLimitHeaders(response, rateLimitHeaders);
-
-    // Add CORS headers
-    const corsResponse = addCorsHeaders(response, origin || undefined);
-
-    // Add security headers for development when they're not handled by Vercel
-    if (process.env.NODE_ENV === 'development') {
-      corsResponse.headers.set('X-Content-Type-Options', 'nosniff');
-      corsResponse.headers.set('X-Frame-Options', 'DENY');
-      corsResponse.headers.set('X-XSS-Protection', '1; mode=block');
-      corsResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-      corsResponse.headers.set(
-        'Permissions-Policy', 
-        'camera=(), microphone=(), geolocation=(), browsing-topics=()'
-      );
-      corsResponse.headers.set(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https: ws: wss:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
-      );
-    }
-
-    return corsResponse;
-  } catch (error) {
-    // If rate limiting fails, log error but don't block request
-    console.error('[Middleware] Rate limiting error:', error);
     
-    // Create fallback response
+    // Add CORS headers
+    addCorsHeaders(response, origin || undefined);
+    
+    // Add security headers
+    addSecurityHeaders(response);
+    
+    return response;
+    
+  } catch (error) {
+    console.error('[Middleware] Error processing request:', error);
+    
+    // Create fallback response  
     const fallbackResponse = NextResponse.next();
     
-    // Add fallback headers
-    fallbackResponse.headers.set('X-RateLimit-Limit', '100');
-    fallbackResponse.headers.set('X-RateLimit-Remaining', '99');
+    // Add basic headers
+    addCorsHeaders(fallbackResponse, origin || undefined);
+    addSecurityHeaders(fallbackResponse);
     
-    return addCorsHeaders(fallbackResponse, origin || undefined);
+    return fallbackResponse;
   }
 }
 

@@ -32,3 +32,6 @@ tasks/
 
 # MCP Configuration (contains API keys)
 .cursor/mcp.json
+
+# SSL Certificates (keep private keys secure)
+certificates/
