@@ -12,7 +12,64 @@ alwaysApply: true
 
 **This is not optional - it's a required first step for every task.**
 
+## **AUTOMATIC RULE UPDATE TRIGGERS**
+**⚠️ UPDATE SELF_IMPROVE.MDC WHEN ANY OF THESE OCCUR:**
+
+### **During Task Execution:**
+- ❌ **User reports functionality doesn't work** → Document testing methodology issues
+- 🐛 **Discover new debugging technique** → Add to troubleshooting patterns  
+- 🔧 **Find root cause of complex issue** → Document investigation approach
+- ⚡ **Learn new tool/command that saves time** → Add to efficiency patterns
+- 🚨 **Make same mistake twice** → Create prevention rule immediately
+
+### **Post-Task Completion:**
+- 🎯 **After running `npm run verify-task`** → Ask: "What could have prevented any issues found?"
+- 📝 **When updating subtask with lessons learned** → Extract patterns for future tasks
+- 🔄 **If task required multiple iterations** → Document what went wrong and how to avoid
+- ✅ **After successful task completion** → Review: "What new pattern did I follow that should be documented?"
+
+### **User Feedback Triggers:**
+- 😤 **User expresses frustration** → Analyze what process failed and document prevention
+- 🤔 **User asks "why didn't you..." questions** → Create rule for that expectation
+- 👍 **User praises specific approach** → Document successful pattern for reuse
+- 🔁 **User points out repeated issue** → Immediately create prevention rule
+
+### **Technical Discovery Triggers:**
+- 🛠️ **New framework/library patterns emerge** → Document usage rules
+- 🐞 **Browser compatibility issues found** → Add testing requirements
+- 🎨 **UI/UX patterns that work well** → Document design decisions
+- ⚡ **Performance optimizations discovered** → Add efficiency rules
+
+## **UPDATE PROCESS:**
+1. **Immediately after trigger occurs** → Note what should be documented
+2. **Add new lesson with current date** → Use format: `### **Lesson Title (YYYY-MM-DD)**`
+3. **Include: Issue, Pattern, Rule, Benefits** → Follow established format
+4. **Test rule effectiveness** → Verify it prevents the original issue
+5. **Reference in future tasks** → Ensure new rule gets applied
+
 ## **Documented Lessons Learned**
+
+### **Post-Task Verification Protocol (2024-05-31)**
+- **Issue:** Tasks were marked complete without adequate verification that functionality actually works in production environment
+- **Pattern:** **MANDATORY: Always run `npm run verify-task` before marking any task complete**
+- **Rule:** 
+  - **NEVER mark a task complete without running verification**
+  - Post-task verification focuses on critical E2E user journeys (React hydration, user interactions, core functionality)
+  - Use `npm run verify-task` - if it passes, task can be marked complete
+  - Unit test failures are addressed as maintenance tasks separately from core functionality verification
+  - If verification fails, DO NOT mark task complete - fix issues first
+- **Benefits:** Prevents shipping broken functionality, catches hydration failures, ensures React loads properly, verifies user interactions work
+
+### **Comprehensive Task Verification Protocol (2024-05-31)**
+- **Issue:** Marked UI task complete based on passing isolated component tests while actual browser functionality was broken due to React hydration failure
+- **Pattern:** Trusting unit/component tests over real user experience leads to false confidence in task completion
+- **Rule:** 
+  - **ALWAYS test functionality from user perspective before marking complete**
+  - **Implement E2E tests that verify actual browser behavior, not just isolated components**
+  - **Check React hydration, JavaScript loading, and real DOM interactions**
+  - **Use multiple testing levels: Unit (isolated) + E2E (integrated) + Manual verification**
+  - **If user reports functionality doesn't work, trust user over test results - investigate testing methodology**
+- **Benefits:** Prevents shipping broken features, ensures React applications load correctly, verifies real user experience
 
 ### **Port Verification Protocol (2024-05-29)**
 - **Issue:** Instructed user to visit `localhost:3000` when dev server was running on different port (`3002`)
@@ -29,6 +86,21 @@ alwaysApply: true
   - Resist urge to "get ahead" or implement related functionality
   - Leave subsequent work for their designated tasks/subtasks
 - **Benefits:** Maintains proper task tracking, prevents scope creep, ensures accurate progress reporting
+
+### **CSS Framework Migration Protocol (2025-01-02)**
+- **Issue:** When downgrading Tailwind CSS from v4 to v3, oversimplified `globals.css` and removed critical CSS variables that shadcn components depended on, causing complete visual display failure
+- **Pattern:** **Always understand component library dependencies before CSS framework changes**
+- **Rule:** 
+  - Before modifying CSS frameworks, research component library requirements (shadcn, Ant Design, etc.)
+  - Check what CSS variables/classes components actually use via grep search
+  - Follow official migration guides rather than improvising
+  - Test visual appearance immediately after CSS changes, not just build success
+  - Change one thing at a time during framework migrations
+- **Prevention:** 
+  - Add `grep_search` for CSS variable usage in components before CSS changes
+  - Visual regression testing protocol after theming changes
+  - Framework migration checklist with component library considerations
+- **Keywords:** CSS framework, Tailwind, shadcn, component library, visual regression, migration
 
 ## **Rule Improvement Guidelines**
 
