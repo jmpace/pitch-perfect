@@ -170,25 +170,48 @@ export default function UploadPage() {
         throw new Error('File contains dangerous content and cannot be uploaded');
       }
 
-      // Step 1: Upload file to storage
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('options', JSON.stringify(analysisOptions));
-
-      const uploadResponse = await fetch('/api/upload', {
+      // Step 1: Get upload token from our API
+      const tokenResponse = await fetch('/api/upload', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          size: file.size,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json();
+        throw new Error(errorData.message || 'Failed to get upload token');
+      }
+
+      const { uploadId, clientToken, uploadUrl, filename } = await tokenResponse.json();
+
+      // Step 2: Upload directly to Vercel Blob using the client token
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${clientToken}`,
+          'Content-Type': file.type,
+        },
+        body: file,
       });
 
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.message || 'Upload failed');
+        throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
       }
 
-      const uploadResult = await uploadResponse.json();
+      const blobData = await uploadResponse.json();
       setUploadProgress(100);
 
-      // Step 2: Start video processing
+      // The callback will be triggered automatically by Vercel Blob
+      // Wait a moment for the callback to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Step 3: Start video processing
       setUploadStatus('processing');
       setUploadProgress(0);
       setProcessingStage({
@@ -203,7 +226,8 @@ export default function UploadPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          videoUrl: uploadResult.url,
+          videoUrl: blobData.url || uploadUrl, // Use the blob URL from response or fallback to upload URL
+          uploadId,
           options: analysisOptions
         }),
       });
@@ -217,7 +241,7 @@ export default function UploadPage() {
       setJobId(processResult.jobId);
       setEstimatedTimeRemaining(processResult.estimatedTime);
 
-      // Step 3: Poll for processing status
+      // Step 4: Poll for processing status
       pollProcessingStatus(processResult.jobId);
 
     } catch (error) {

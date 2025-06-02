@@ -1,260 +1,124 @@
-import { put } from '@vercel/blob';
-import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { NextRequest } from 'next/server';
 import { UploadProgressTracker, generateUploadId } from '@/lib/upload-progress';
-import { FileTracker } from '@/lib/file-tracking';
-import { CleanupScheduler } from '@/lib/cleanup-scheduler';
 import { 
   generateRequestId,
   createErrorResponse,
   createSuccessResponse,
   normalizeError,
-  handleBlobSDKError,
-  validateStorageConfig,
-  withErrorHandling,
-  withTimeout,
   logError
 } from '@/lib/errors/handlers';
 import { validateFile } from '@/lib/validation';
 import { 
   isStorageError,
-  BlobAccessError,
-  UploadError,
   ProcessingError,
   ConfigurationError
 } from '@/lib/errors/types';
-import { createSanitizedHandler, SANITIZATION_CONFIGS, type SanitizedRequestData } from '@/lib/sanitization/middleware';
+import { createSanitizedHandler, type SanitizedRequestData } from '@/lib/sanitization/middleware';
 import { sanitize } from '@/lib/sanitization';
 import { enforceRateLimit } from '@/lib/rate-limiter';
 
-async function handleUpload(request: NextRequest, sanitizedData: SanitizedRequestData) {
+async function handleUploadRequest(request: NextRequest, sanitizedData: SanitizedRequestData) {
   const requestId = generateRequestId();
-  let progressTracker: UploadProgressTracker | null = null;
-  let uploadId: string | null = null;
 
   try {
-    // Validate storage configuration
-    const configError = validateStorageConfig();
-    if (configError) {
-      logError(configError, { endpoint: '/api/upload', action: 'config_check' });
-      return createErrorResponse(configError);
-    }
-
-    // Rate limiting check - new enhanced system handles IP extraction automatically
+    // Rate limiting check
     enforceRateLimit(request, 'UPLOAD', requestId);
 
-    uploadId = generateUploadId();
-    
-    // Parse form data with error handling
-    const formData = await withErrorHandling(
-      () => request.formData(),
-      'parsing_form_data',
-      requestId
-    );
+    const body = await request.json();
+    const { filename, contentType, size } = body;
 
-    let file = formData.get('file') as File;
+    // Validate the file parameters
+    if (!filename || !contentType || !size) {
+      throw new ProcessingError(
+        'Missing required file parameters',
+        { filename, contentType, size },
+        requestId
+      );
+    }
 
     // Sanitize the filename for security
-    if (file) {
-      const sanitizedFilename = sanitize.filename(file.name);
-      // Create a new File object with the sanitized filename
-      file = new File([file], sanitizedFilename, {
-        type: file.type,
-        lastModified: file.lastModified,
-      });
-      
-      // Validate file with comprehensive error handling
-      validateFile(file, requestId);
-    } else {
-      // Validate with original validation if no file
-      validateFile(file, requestId);
-    }
+    const sanitizedFilename = sanitize.filename(filename);
 
-    // Initialize progress tracking
-    progressTracker = new UploadProgressTracker(uploadId, file.size);
+    // Create a mock File object for validation
+    const mockFile = {
+      name: sanitizedFilename,
+      type: contentType,
+      size: size
+    } as File;
 
-    // Create a progress-tracking stream with error handling
-    const chunks: Uint8Array[] = [];
-    const reader = file.stream().getReader();
-    let bytesUploaded = 0;
+    // Validate file with comprehensive error handling
+    validateFile(mockFile, requestId);
 
-    try {
-      // Read file in chunks and track progress
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        chunks.push(value);
-        bytesUploaded += value.length;
-        progressTracker.updateProgress(bytesUploaded);
-      }
-    } catch (error) {
-      progressTracker.setFailed('File reading failed');
-      throw new ProcessingError(
-        'Failed to read uploaded file',
-        { 
-          originalError: error instanceof Error ? error.message : String(error),
-          bytesRead: bytesUploaded 
-        },
+    // Check if we have Blob token for Vercel Blob
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      throw new ConfigurationError(
+        'Blob storage not configured. Large file uploads require Vercel Blob storage.',
+        { hasToken: false },
         requestId
       );
     }
 
-    // Combine chunks back into a Buffer for Vercel Blob
-    let buffer: Buffer;
-    try {
-      const combinedChunks = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
-      let offset = 0;
-      for (const chunk of chunks) {
-        combinedChunks.set(chunk, offset);
-        offset += chunk.length;
-      }
-      buffer = Buffer.from(combinedChunks);
-    } catch (error) {
-      progressTracker.setFailed('File processing failed');
-      throw new ProcessingError(
-        'Failed to process uploaded file',
-        { 
-          originalError: error instanceof Error ? error.message : String(error),
-          chunksCount: chunks.length 
-        },
-        requestId
-      );
-    }
+    // Generate upload ID for tracking
+    const uploadId = generateUploadId();
 
-    // Upload to Vercel Blob with timeout and specific error handling
-    let blob;
-    let isLocalStorage = false;
-    try {
-      // Check if Blob token is available
-      if (!process.env.BLOB_READ_WRITE_TOKEN) {
-        isLocalStorage = true;
-        // Fallback to local file storage for development
-        console.log('🔧 No Blob token found, using local file storage for development');
-        
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = join(process.cwd(), 'public', 'uploads');
-        await mkdir(uploadsDir, { recursive: true });
-        
-        // Generate unique filename
-        const timestamp = Date.now();
-        const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const localFilename = `${timestamp}_${safeFilename}`;
-        const localPath = join(uploadsDir, localFilename);
-        
-        // Save file locally
-        await writeFile(localPath, buffer);
-        
-        // Create blob-like response for compatibility
-        blob = {
-          url: `/uploads/${localFilename}`,
-          downloadUrl: `/uploads/${localFilename}`,
-          pathname: localFilename,
-          contentType: file.type,
-          contentDisposition: `attachment; filename="${file.name}"`,
-          size: file.size,
-        };
-        
-        console.log('✅ File saved locally:', localPath);
-      } else {
-        // Use Vercel Blob storage
-        blob = await withTimeout(
-          put(file.name, buffer, {
-            access: 'public',
-            token: process.env.BLOB_READ_WRITE_TOKEN,
-          }),
-          30000, // 30 second timeout for upload
-          requestId
-        );
-      }
-    } catch (error) {
-      progressTracker.setFailed('Upload to storage failed');
-      
-      if (isLocalStorage) {
-        // Handle local storage errors differently
-        throw new ProcessingError(
-          'Failed to save file locally',
-          { 
-            originalError: error instanceof Error ? error.message : String(error),
-            storageType: 'local'
-          },
-          requestId
-        );
-      } else {
-        // Handle Blob storage errors
-        throw handleBlobSDKError(error, requestId);
-      }
-    }
+    // Generate a unique filename with timestamp to avoid conflicts
+    const timestamp = Date.now();
+    const uniqueFilename = `${timestamp}_${sanitizedFilename}`;
 
-    // Mark upload as completed
-    progressTracker.setCompleted();
-
-    // Register file in tracking system for cleanup management
-    let fileMetadata;
-    try {
-      const sessionId = `session_${uploadId}`;
-      fileMetadata = FileTracker.registerFile(
-        blob.url,
-        uploadId,
-        file.name,
-        file.size,
-        file.type,
-        sessionId
-      );
-    } catch (error) {
-      // Log but don't fail upload if tracking fails
-      const trackingError = normalizeError(error, requestId);
-      logError(trackingError, { 
-        endpoint: '/api/upload', 
-        action: 'file_tracking',
-        blobUrl: blob.url 
-      });
-    }
-
-    // Trigger cleanup scheduler after successful upload
-    CleanupScheduler.onFileUploaded().catch(error => {
-      const cleanupError = normalizeError(error, requestId);
-      logError(cleanupError, { 
-        endpoint: '/api/upload', 
-        action: 'cleanup_scheduling' 
-      });
-      // Don't fail the upload if cleanup scheduling fails
+    // Generate a client token for direct uploads to Vercel Blob
+    // This allows the client to upload directly without going through our function
+    const tokenResponse = await fetch('https://blob.vercel-storage.com/api/client-token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pathname: uniqueFilename,
+        contentType,
+        callbackUrl: `${process.env.VERCEL_URL || 'http://localhost:3000'}/api/upload/callback`,
+        clientPayload: JSON.stringify({ 
+          uploadId, 
+          originalFilename: filename, 
+          sanitizedFilename,
+          size,
+          contentType
+        }),
+      }),
     });
 
-    const responseData = {
-      uploadId,
-      url: blob.url,
-      downloadUrl: blob.downloadUrl,
-      size: file.size,
-      type: file.type,
-      name: file.name, // This is now the sanitized filename
-      sessionId: `session_${uploadId}`,
-      blobId: fileMetadata?.blobId,
-      // Include cleanup info for transparency
-      cleanupInfo: {
-        registeredForCleanup: !!fileMetadata,
-        expiresAfter: '24 hours',
-        trackingId: fileMetadata?.blobId
-      }
-    };
-
-    return createSuccessResponse(responseData, requestId);
-
-  } catch (error) {
-    // Ensure progress tracker shows failure
-    if (progressTracker) {
-      progressTracker.setFailed(
-        isStorageError(error) ? error.message : 'Upload failed'
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      throw new ProcessingError(
+        `Failed to generate client token: ${tokenResponse.status}`,
+        { errorText, status: tokenResponse.status },
+        requestId
       );
     }
 
-    // Normalize error and create appropriate response
+    const tokenData = await tokenResponse.json();
+
+    // Initialize progress tracking for this upload
+    const progressTracker = new UploadProgressTracker(uploadId, size);
+    progressTracker.updateProgress(0); // Start tracking
+
+    return createSuccessResponse({
+      uploadId,
+      clientToken: tokenData.token,
+      uploadUrl: `https://blob.vercel-storage.com/${uniqueFilename}`,
+      filename: sanitizedFilename,
+      originalFilename: filename,
+      size,
+      contentType,
+      uniqueFilename
+    }, requestId);
+
+  } catch (error) {
     const storageError = isStorageError(error) 
       ? error 
       : normalizeError(error, requestId);
 
-    // Enhanced logging with context - use sanitized headers where available
+    // Enhanced logging with context
     const clientIP = (sanitizedData.headers['x-forwarded-for'] || 
                      sanitizedData.headers['x-real-ip'] ||
                      request.headers.get('x-forwarded-for') || 
@@ -263,21 +127,19 @@ async function handleUpload(request: NextRequest, sanitizedData: SanitizedReques
     const userAgent = sanitizedData.headers['user-agent'] || request.headers.get('user-agent');
     logError(storageError, {
       endpoint: '/api/upload',
-      uploadId,
       clientIP: clientIP,
       userAgent: userAgent,
-      contentLength: request.headers.get('content-length'),
     });
 
     return createErrorResponse(storageError);
   }
 }
 
-// Export the sanitized handler using a custom UPLOAD configuration
-export const POST = createSanitizedHandler(handleUpload, {
+// Export the sanitized handler
+export const POST = createSanitizedHandler(handleUploadRequest, {
   sanitizeQuery: true,
-  sanitizeBody: false, // Don't sanitize file content
+  sanitizeBody: true,
   sanitizeHeaders: ['user-agent', 'x-forwarded-for', 'x-real-ip'],
-  blockDangerous: false, // Disable dangerous content blocking for file uploads
-  maxBodySize: 100 * 1024 * 1024, // 100MB
+  blockDangerous: false,
+  maxBodySize: 10 * 1024, // Small JSON payload only
 }); 
