@@ -288,10 +288,9 @@ export default function UploadPage() {
           setUploadStatus('success');
           setUploadProgress(100);
           
-          // Redirect to results after a brief delay
-          setTimeout(() => {
-            router.push(`/results/${jobId}`);
-          }, 2000);
+          // Don't automatically redirect - let user click button instead
+          // This prevents issues with navigation and gives user control
+          console.log(`Analysis complete for job ${jobId}. Ready to view results.`);
         }
 
         // Handle failure
@@ -373,7 +372,7 @@ export default function UploadPage() {
                       <span className="font-medium text-gray-900 dark:text-white">
                         {uploadStatus === 'uploading' && 'Uploading Video...'}
                         {uploadStatus === 'processing' && (processingStage?.name || 'Processing...')}
-                        {uploadStatus === 'success' && 'Complete! Redirecting...'}
+                        {uploadStatus === 'success' && 'Analysis Complete!'}
                         {uploadStatus === 'error' && 'Error'}
                       </span>
                     </div>
@@ -416,7 +415,11 @@ export default function UploadPage() {
                     <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                       <AlertDescription className="text-green-800 dark:text-green-200">
-                        Analysis complete! Redirecting to your results...
+                        {jobId ? (
+                          <>Analysis complete! Use the "View Analysis Results" button below to see your results.</>
+                        ) : (
+                          <>Upload successful! Processing analysis...</>
+                        )}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -641,39 +644,64 @@ export default function UploadPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button 
-              onClick={handleAnalyze} 
-              disabled={!file || !validationResult?.isValid || isUploading || isProcessing}
-              className="flex-1"
-              size="lg"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading... {uploadProgress}%
-                </>
-              ) : isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {processingStage?.name || 'Processing...'}
-                </>
-              ) : uploadStatus === 'success' ? (
-                <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Complete! Redirecting...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Start Analysis
-                </>
-              )}
-            </Button>
-            <Button asChild variant="outline" className="flex-1" size="lg">
-              <Link href="/results">
-                View Sample Results
-              </Link>
-            </Button>
+            {/* Main action button - Start Analysis or View Results */}
+            {uploadStatus === 'success' && jobId ? (
+              // Show View Results button when processing is complete
+              <Button 
+                onClick={() => router.push(`/results/${jobId}`)}
+                className="flex-1"
+                size="lg"
+                variant="default"
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                View Analysis Results
+              </Button>
+            ) : (
+              // Show Start Analysis button when ready to upload
+              <Button 
+                onClick={handleAnalyze} 
+                disabled={!file || !validationResult?.isValid || isUploading || isProcessing}
+                className="flex-1"
+                size="lg"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading... {uploadProgress}%
+                  </>
+                ) : isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {processingStage?.name || 'Processing...'}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Start Analysis
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {/* Secondary action button */}
+            {uploadStatus === 'success' && jobId ? (
+              // Show Upload Another button when processing is complete
+              <Button 
+                onClick={clearFile}
+                variant="outline" 
+                className="flex-1" 
+                size="lg"
+              >
+                Upload Another
+              </Button>
+            ) : (
+              // Show View Sample Results when not processing
+              <Button asChild variant="outline" className="flex-1" size="lg">
+                <Link href="/results">
+                  View Sample Results
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
