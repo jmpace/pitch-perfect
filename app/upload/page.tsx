@@ -7,13 +7,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { validateFileDetailed, type FileValidationResult } from "@/lib/validation";
 import { AlertCircle, CheckCircle, AlertTriangle, Upload, X, Loader2 } from "lucide-react";
 import { useSanitizedFile } from "@/lib/sanitization/client";
 
-type UploadStatus = 'idle' | 'uploading' | 'success' | 'error' | 'cancelled';
+type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'error' | 'cancelled';
+
+interface ProcessingStage {
+  name: string;
+  description: string;
+  progress: number;
+}
 
 export default function UploadPage() {
+  const router = useRouter();
   const [dragActive, setDragActive] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -24,6 +32,17 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [processingStage, setProcessingStage] = useState<ProcessingStage | null>(null);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
+
+  // Analysis options
+  const [analysisOptions, setAnalysisOptions] = useState({
+    contentAnalysis: true,
+    structureFlow: true,
+    persuasiveness: true,
+    voiceAnalysis: false
+  });
 
   // Sanitization hooks
   const { createSanitizedFile, isDangerousFilename } = useSanitizedFile();
@@ -137,41 +156,170 @@ export default function UploadPage() {
     setUploadProgress(0);
   };
 
-  // Simulate upload progress (replace with real upload logic later)
-  const simulateUpload = async () => {
+  // Real video processing function
+  const processVideo = async () => {
+    if (!file || !validationResult?.isValid) return;
+
     setUploadStatus('uploading');
     setUploadError(null);
     setUploadProgress(0);
 
     try {
       // Additional client-side security check before upload
-      if (file && isDangerousFilename(file.name)) {
+      if (isDangerousFilename(file.name)) {
         throw new Error('File contains dangerous content and cannot be uploaded');
       }
 
-      // Simulate upload progress
-      for (let i = 0; i <= 100; i += 2) {
-        if (uploadStatus === 'cancelled') {
-          return;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 50)); // 50ms delay
-        setUploadProgress(i);
+      // Step 1: Upload file to storage
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('options', JSON.stringify(analysisOptions));
+
+      const uploadResponse = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.message || 'Upload failed');
       }
-      
-      setUploadStatus('success');
-      console.log("Upload completed successfully for file:", file?.name);
+
+      const uploadResult = await uploadResponse.json();
+      setUploadProgress(100);
+
+      // Step 2: Start video processing
+      setUploadStatus('processing');
+      setUploadProgress(0);
+      setProcessingStage({
+        name: 'Starting Analysis',
+        description: 'Initializing video processing pipeline...',
+        progress: 0
+      });
+
+      const processResponse = await fetch('/api/video/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoUrl: uploadResult.url,
+          options: analysisOptions
+        }),
+      });
+
+      if (!processResponse.ok) {
+        const errorData = await processResponse.json();
+        throw new Error(errorData.message || 'Processing failed to start');
+      }
+
+      const processResult = await processResponse.json();
+      setJobId(processResult.jobId);
+      setEstimatedTimeRemaining(processResult.estimatedTime);
+
+      // Step 3: Poll for processing status
+      pollProcessingStatus(processResult.jobId);
+
     } catch (error) {
       setUploadStatus('error');
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed. Please try again.';
+      const errorMessage = error instanceof Error ? error.message : 'Processing failed. Please try again.';
       setUploadError(errorMessage);
-      console.error("Upload error:", error);
+      console.error("Video processing error:", error);
     }
+  };
+
+  // Poll for processing status
+  const pollProcessingStatus = async (jobId: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusResponse = await fetch(`/api/video/status/${jobId}`);
+        
+        if (!statusResponse.ok) {
+          throw new Error('Failed to get processing status');
+        }
+
+        const status = await statusResponse.json();
+        
+        // Update progress and stage
+        setUploadProgress(status.progress);
+        setEstimatedTimeRemaining(status.estimatedTimeRemaining);
+        
+        // Update processing stage based on current stage
+        const stageMap: Record<string, ProcessingStage> = {
+          'queued': {
+            name: 'Queued',
+            description: 'Your video is in the processing queue...',
+            progress: status.progress
+          },
+          'metadata_extraction': {
+            name: 'Analyzing Video',
+            description: 'Extracting video metadata and basic information...',
+            progress: status.progress
+          },
+          'frame_extraction': {
+            name: 'Processing Slides',
+            description: 'Extracting and analyzing slide content...',
+            progress: status.progress
+          },
+          'audio_extraction': {
+            name: 'Transcribing Audio',
+            description: 'Converting speech to text and analyzing delivery...',
+            progress: status.progress
+          },
+          'finalizing': {
+            name: 'Generating Insights',
+            description: 'Creating recommendations and final analysis...',
+            progress: status.progress
+          },
+          'completed': {
+            name: 'Complete!',
+            description: 'Analysis complete. Redirecting to results...',
+            progress: 100
+          }
+        };
+
+        if (status.currentStage && stageMap[status.currentStage]) {
+          setProcessingStage(stageMap[status.currentStage]);
+        }
+
+        // Handle completion
+        if (status.status === 'completed') {
+          clearInterval(pollInterval);
+          setUploadStatus('success');
+          setUploadProgress(100);
+          
+          // Redirect to results after a brief delay
+          setTimeout(() => {
+            router.push(`/results/${jobId}`);
+          }, 2000);
+        }
+
+        // Handle failure
+        if (status.status === 'failed') {
+          clearInterval(pollInterval);
+          setUploadStatus('error');
+          setUploadError(status.error || 'Processing failed');
+        }
+
+      } catch (error) {
+        console.error('Status polling error:', error);
+        // Don't immediately fail on polling errors, retry a few times
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Clear interval after 10 minutes (fallback)
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (uploadStatus === 'processing') {
+        setUploadError('Processing timeout. Please check results page or try again.');
+        setUploadStatus('error');
+      }
+    }, 600000); // 10 minutes
   };
 
   const handleAnalyze = async () => {
     if (file && validationResult?.isValid) {
-      await simulateUpload();
+      await processVideo();
     }
   };
 
@@ -179,7 +327,16 @@ export default function UploadPage() {
     ['video/mp4', 'video/quicktime', 'video/webm'].includes(validationResult.metadata.type);
 
   const isUploading = uploadStatus === 'uploading';
+  const isProcessing = uploadStatus === 'processing';
   const showProgress = uploadStatus !== 'idle';
+
+  // Format time remaining
+  const formatTimeRemaining = (seconds: number) => {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${Math.round(remainingSeconds)}s`;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -200,72 +357,66 @@ export default function UploadPage() {
             </p>
           </div>
 
-          {/* Upload Progress */}
+          {/* Progress Section - Enhanced */}
           {showProgress && (
-            <Card className="mb-6">
-              <CardContent className="pt-6">
+            <Card className="mb-8">
+              <CardContent className="p-6">
                 <div className="space-y-4">
+                  {/* Status Header */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      {uploadStatus === 'uploading' && 'Uploading...'}
-                      {uploadStatus === 'success' && 'Upload Complete!'}
-                      {uploadStatus === 'error' && 'Upload Failed'}
-                      {uploadStatus === 'cancelled' && 'Upload Cancelled'}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {uploadProgress}%
-                    </span>
-                  </div>
-                  
-                  <Progress value={uploadProgress} className="w-full" />
-                  
-                  {/* Upload Controls */}
-                  <div className="flex justify-end space-x-2">
-                    {isUploading && (
-                      <Button
-                        onClick={cancelUpload}
-                        variant="outline"
+                    <div className="flex items-center space-x-2">
+                      {uploadStatus === 'uploading' && <Loader2 className="h-5 w-5 animate-spin text-blue-600" />}
+                      {uploadStatus === 'processing' && <Loader2 className="h-5 w-5 animate-spin text-orange-600" />}
+                      {uploadStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                      {uploadStatus === 'error' && <AlertCircle className="h-5 w-5 text-red-600" />}
+                      
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {uploadStatus === 'uploading' && 'Uploading Video...'}
+                        {uploadStatus === 'processing' && (processingStage?.name || 'Processing...')}
+                        {uploadStatus === 'success' && 'Complete! Redirecting...'}
+                        {uploadStatus === 'error' && 'Error'}
+                      </span>
+                    </div>
+                    
+                    {uploadStatus !== 'error' && uploadStatus !== 'success' && (
+                      <Button 
+                        onClick={cancelUpload} 
+                        variant="ghost" 
                         size="sm"
-                        className="text-red-600 hover:text-red-700"
+                        className="text-gray-500 hover:text-red-600"
                       >
                         <X className="h-4 w-4 mr-1" />
                         Cancel
                       </Button>
                     )}
-                    
-                    {uploadStatus === 'success' && (
-                      <Button
-                        onClick={clearFile}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Upload Another
-                      </Button>
-                    )}
-                    
-                    {uploadStatus === 'error' && (
-                      <Button
-                        onClick={handleAnalyze}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Retry Upload
-                      </Button>
-                    )}
                   </div>
-                  
-                  {uploadError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{uploadError}</AlertDescription>
-                    </Alert>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <Progress value={uploadProgress} className="h-3" />
+                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <span>{uploadProgress}% complete</span>
+                      {estimatedTimeRemaining && uploadStatus === 'processing' && (
+                        <span>~{formatTimeRemaining(estimatedTimeRemaining)} remaining</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Processing Stage Description */}
+                  {processingStage && uploadStatus === 'processing' && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        {processingStage.description}
+                      </p>
+                    </div>
                   )}
-                  
-                  {uploadStatus === 'success' && file && (
-                    <Alert variant="default" className="border-green-200 bg-green-50 dark:bg-green-900/20">
+
+                  {/* Success Message */}
+                  {uploadStatus === 'success' && (
+                    <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                       <AlertDescription className="text-green-800 dark:text-green-200">
-                        {file.name} uploaded successfully! Processing analysis...
+                        Analysis complete! Redirecting to your results...
                       </AlertDescription>
                     </Alert>
                   )}
@@ -417,7 +568,13 @@ export default function UploadPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="content-analysis" defaultChecked />
+                  <Checkbox 
+                    id="content-analysis" 
+                    checked={analysisOptions.contentAnalysis}
+                    onCheckedChange={(checked) => 
+                      setAnalysisOptions(prev => ({ ...prev, contentAnalysis: checked as boolean }))
+                    }
+                  />
                   <label 
                     htmlFor="content-analysis" 
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -426,7 +583,13 @@ export default function UploadPage() {
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="structure-flow" defaultChecked />
+                  <Checkbox 
+                    id="structure-flow" 
+                    checked={analysisOptions.structureFlow}
+                    onCheckedChange={(checked) => 
+                      setAnalysisOptions(prev => ({ ...prev, structureFlow: checked as boolean }))
+                    }
+                  />
                   <label 
                     htmlFor="structure-flow" 
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -435,7 +598,13 @@ export default function UploadPage() {
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="persuasiveness" defaultChecked />
+                  <Checkbox 
+                    id="persuasiveness" 
+                    checked={analysisOptions.persuasiveness}
+                    onCheckedChange={(checked) => 
+                      setAnalysisOptions(prev => ({ ...prev, persuasiveness: checked as boolean }))
+                    }
+                  />
                   <label 
                     htmlFor="persuasiveness" 
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -444,7 +613,13 @@ export default function UploadPage() {
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="voice-analysis" />
+                  <Checkbox 
+                    id="voice-analysis" 
+                    checked={analysisOptions.voiceAnalysis}
+                    onCheckedChange={(checked) => 
+                      setAnalysisOptions(prev => ({ ...prev, voiceAnalysis: checked as boolean }))
+                    }
+                  />
                   <label 
                     htmlFor="voice-analysis" 
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -456,11 +631,19 @@ export default function UploadPage() {
             </CardContent>
           </Card>
 
+          {/* Error Display */}
+          {uploadError && (
+            <Alert variant="destructive" className="mb-8">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{uploadError}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button 
               onClick={handleAnalyze} 
-              disabled={!file || !validationResult?.isValid || isUploading}
+              disabled={!file || !validationResult?.isValid || isUploading || isProcessing}
               className="flex-1"
               size="lg"
             >
@@ -469,10 +652,15 @@ export default function UploadPage() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Uploading... {uploadProgress}%
                 </>
+              ) : isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {processingStage?.name || 'Processing...'}
+                </>
               ) : uploadStatus === 'success' ? (
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Upload Complete
+                  Complete! Redirecting...
                 </>
               ) : (
                 <>
