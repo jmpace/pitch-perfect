@@ -81,6 +81,18 @@
       "namedRegex": "^/results(?:/)?$"
     },
     {
+      "page": "/timeline-demo",
+      "regex": "^/timeline\\-demo(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/timeline\\-demo(?:/)?$"
+    },
+    {
+      "page": "/timeline-demo-simple",
+      "regex": "^/timeline\\-demo\\-simple(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/timeline\\-demo\\-simple(?:/)?$"
+    },
+    {
       "page": "/upload",
       "regex": "^/upload(?:/)?$",
       "routeKeys": {},

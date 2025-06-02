@@ -3,6 +3,9 @@
  * Secure API key validation and protection for Next.js routes
  */
 
+// Force this module to run in Node.js runtime only
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getApiKeyManager } from './manager';
 import { ApiProvider, SecurityLevel, ApiKeyOperationResult } from './types';

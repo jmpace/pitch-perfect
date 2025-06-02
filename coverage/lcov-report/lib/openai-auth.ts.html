@@ -23,23 +23,23 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80.85% </span>
+                <span class="strong">82.97% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>38/47</span>
+                <span class='fraction'>39/47</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.75% </span>
+                <span class="strong">56.25% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/16</span>
+                <span class='fraction'>9/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
@@ -267,34 +267,34 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -308,10 +308,10 @@
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -410,9 +410,9 @@ export async function checkAuthentication(): Promise&lt;AuthStatus&gt; {
 &nbsp;
     // Test the API connection
     const response = await openai.models.list();
-    const modelIds = response.data.map(<span class="fstat-no" title="function not covered" >model =&gt; <span class="cstat-no" title="statement not covered" >m</span>odel.id)</span>;
+    const modelIds = response.data.map(model =&gt; model.id);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return {</span>
+    return {
       isAuthenticated: true,
       hasValidKey: true,
       models: modelIds.slice(0, 10), // Return first 10 models
@@ -426,13 +426,13 @@ export async function checkAuthentication(): Promise&lt;AuthStatus&gt; {
       errorMessage = error.message;
       
       // Provide more specific error messages
-      <span class="missing-if-branch" title="if path not taken" >I</span>if (errorMessage.includes('401')) {
-<span class="cstat-no" title="statement not covered" >        errorMessage = 'Invalid API key - please check your OPENAI_API_KEY';</span>
-      } else <span class="missing-if-branch" title="if path not taken" >I</span>if (errorMessage.includes('429')) {
+      if (errorMessage.includes('401')) {
+        errorMessage = 'Invalid API key - please check your OPENAI_API_KEY';
+      } else <span class="cstat-no" title="statement not covered" ><span class="missing-if-branch" title="else path not taken" >E</span>if (errorMessage.includes('429')) {</span>
 <span class="cstat-no" title="statement not covered" >        errorMessage = 'Rate limit exceeded - please wait before retrying';</span>
-      } else <span class="missing-if-branch" title="if path not taken" >I</span>if (errorMessage.includes('500')) {
+      } else <span class="cstat-no" title="statement not covered" >if (errorMessage.includes('500')) {</span>
 <span class="cstat-no" title="statement not covered" >        errorMessage = 'OpenAI service temporarily unavailable';</span>
-      } else <span class="missing-if-branch" title="if path not taken" >I</span>if (errorMessage.includes('network')) {
+      } else <span class="cstat-no" title="statement not covered" ><span class="missing-if-branch" title="if path not taken" >I</span>if (errorMessage.includes('network')) {</span>
 <span class="cstat-no" title="statement not covered" >        errorMessage = 'Network error - please check your internet connection';</span>
       }
     }
@@ -454,7 +454,7 @@ export async function getAuthenticatedClient() {
     throw new Error(`OpenAI authentication failed: ${authStatus.error}`);
   }
   
-<span class="cstat-no" title="statement not covered" >  return openai;</span>
+  return openai;
 }
 &nbsp;
 // Setup instructions for developers
@@ -499,7 +499,7 @@ export function getSetupStatus() {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-05-30T02:50:15.637Z
+                at 2025-06-01T20:08:41.964Z
             </div>
         <script src="../prettify.js"></script>
         <script>

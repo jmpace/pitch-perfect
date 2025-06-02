@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">10.07% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/129</span>
+                <span class='fraction'>13/129</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">4% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/25</span>
+                <span class='fraction'>1/25</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">10.15% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/128</span>
+                <span class='fraction'>13/128</span>
             </div>
         
             
@@ -710,22 +710,22 @@
 <a name='L645'></a><a href='#L645'>645</a>
 <a name='L646'></a><a href='#L646'>646</a>
 <a name='L647'></a><a href='#L647'>647</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -739,7 +739,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -832,8 +832,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -843,15 +843,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1356,22 +1356,22 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// Enhanced Storage and Delivery Manager for Video Processing Content
-import { put, list, del, head } from <span class="cstat-no" title="statement not covered" >'@vercel/blob';</span>
-import { nanoid } from <span class="cstat-no" title="statement not covered" >'nanoid';</span>
-import { BlobManager } from <span class="cstat-no" title="statement not covered" >'./blob-manager';</span>
-import { FileTracker } from <span class="cstat-no" title="statement not covered" >'./file-tracking';</span>
+import { put, list, del, head } from '@vercel/blob';
+import { nanoid } from 'nanoid';
+import { BlobManager } from './blob-manager';
+import { FileTracker } from './file-tracking';
 import { 
   VideoProcessingError,
   BlobAccessError,
   NetworkError,
   InternalServerError
-} from <span class="cstat-no" title="statement not covered" >'./errors/types';</span>
+} from './errors/types';
 import { 
   generateRequestId, 
   logError, 
   normalizeError,
   withTimeout 
-} from <span class="cstat-no" title="statement not covered" >'./errors/handlers';</span>
+} from './errors/handlers';
 &nbsp;
 // Storage configuration interface
 export interface StorageConfig {
@@ -1385,7 +1385,7 @@ export interface StorageConfig {
 }
 &nbsp;
 // Content types for organized storage
-export enum <span class="cstat-no" title="statement not covered" >ContentType </span>{
+export enum ContentType {
   VIDEO = 'videos',
   FRAMES = 'frames',
   AUDIO = 'audio',
@@ -1478,8 +1478,8 @@ export interface StorageAnalytics {
   };
 }
 &nbsp;
-export class <span class="cstat-no" title="statement not covered" >StorageDeliveryManager </span>{
-  private static readonly <span class="cstat-no" title="statement not covered" >DEFAULT_CONFIG: StorageConfig = {</span>
+export class StorageDeliveryManager {
+  private static readonly DEFAULT_CONFIG: StorageConfig = {
     enableCompression: true,
     enableCDN: true,
     defaultCacheTimeout: 3600, // 1 hour
@@ -1489,15 +1489,15 @@ export class <span class="cstat-no" title="statement not covered" >StorageDelive
     compressionQuality: 85
   };
 &nbsp;
-  private static <span class="cstat-no" title="statement not covered" >config: StorageConfig = this.DEFAULT_CONFIG;</span>
-  private static <span class="cstat-no" title="statement not covered" >analytics = new Map&lt;string, any&gt;();</span>
+  private static config: StorageConfig = this.DEFAULT_CONFIG;
+  private static analytics = new Map&lt;string, any&gt;();
 &nbsp;
   /**
    * Initialize storage and delivery manager with configuration
    */
-<span class="fstat-no" title="function not covered" >  static i</span>nitialize(config: Partial&lt;StorageConfig&gt; = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span>: void {
-<span class="cstat-no" title="statement not covered" >    this.config = { ...this.DEFAULT_CONFIG, ...config };</span>
-<span class="cstat-no" title="statement not covered" >    console.log('StorageDeliveryManager initialized with config:', this.config);</span>
+  static initialize(config: Partial&lt;StorageConfig&gt; = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span>: void {
+    this.config = { ...this.DEFAULT_CONFIG, ...config };
+    console.log('StorageDeliveryManager initialized with config:', this.config);
   }
 &nbsp;
   /**
@@ -2008,7 +2008,7 @@ export class <span class="cstat-no" title="statement not covered" >StorageDelive
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-05-30T02:50:15.637Z
+                at 2025-06-01T20:08:41.964Z
             </div>
         <script src="../prettify.js"></script>
         <script>
