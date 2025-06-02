@@ -151,4 +151,7 @@ async function handleUploadRequest(request: NextRequest, sanitizedData: Sanitize
 }
 
 // Apply sanitization middleware
-export const POST = createSanitizedHandler(handleUploadRequest); 
+export const POST = createSanitizedHandler(handleUploadRequest, {
+  blockDangerous: false, // Disable dangerous content blocking for upload route
+  sanitizeHeaders: [], // Don't sanitize headers for file uploads
+}); 
