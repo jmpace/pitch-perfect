@@ -2,140 +2,141 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   EnhancedVideoProcessor, 
-  EnhancedVideoProcessingOptions 
+  AdvancedProcessingOptions 
 } from '@/lib/enhanced-video-processor';
 import { 
   generateRequestId,
-  createErrorResponse,
-  createSuccessResponse,
   normalizeError,
-  withErrorHandling
+  logError
 } from '@/lib/errors/handlers';
-import { 
-  isStorageError,
-  ValidationError
-} from '@/lib/errors/types';
 
 // POST /api/video/enhanced - Start enhanced video processing
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   const requestId = generateRequestId();
-
+  
   try {
-    const body = await withErrorHandling(
-      () => request.json(),
-      'parsing_request_body',
-      requestId
-    );
+    const { videoUrl, options = {} } = await req.json();
 
-    const { videoUrl, options = {} } = body;
+    if (!videoUrl) {
+      return NextResponse.json(
+        { error: 'Video URL is required' },
+        { status: 400 }
+      );
+    }
 
-    if (!videoUrl || typeof videoUrl !== 'string') {
-      throw new ValidationError(
-        'Missing or invalid videoUrl',
-        { provided: typeof videoUrl },
-        requestId
+    // Validate URL
+    try {
+      new URL(videoUrl);
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid video URL format' },
+        { status: 400 }
       );
     }
 
     // Validate and sanitize options
-    const processingOptions: EnhancedVideoProcessingOptions = {
+    const processingOptions: AdvancedProcessingOptions = {
       frameInterval: options.frameInterval || 10,
       frameQuality: options.frameQuality || 85,
       frameResolution: options.frameResolution || { width: 1280, height: 720 },
+      extractKeyFramesOnly: options.extractKeyFramesOnly || false,
+      frameFormat: options.frameFormat || 'jpg',
       audioFormat: options.audioFormat || 'mp3',
       audioQuality: options.audioQuality || 128,
       extractAudio: options.extractAudio !== false,
-      timeout: options.timeout || 900000,
-      storageOptions: {
-        enableCompression: options.storageOptions?.enableCompression !== false,
-        enableCDN: options.storageOptions?.enableCDN !== false,
-        generateSignedUrls: options.storageOptions?.generateSignedUrls !== false,
-        enableStreaming: options.storageOptions?.enableStreaming || false,
-        retentionHours: options.storageOptions?.retentionHours || 24
-      }
+      audioNormalization: options.audioNormalization || false,
+      performQualityAnalysis: options.performQualityAnalysis || false,
+      detectScenes: options.detectScenes || false,
+      extractThumbnail: options.extractThumbnail !== false,
+      maxFrames: Math.min(options.maxFrames || 100, 200),
+      maxDuration: Math.min(options.maxDuration || 3600, 7200),
+      timeout: Math.min(options.timeout || 1800000, 3600000),
+      priority: options.priority || 'normal'
     };
 
-    // Initialize enhanced video processor if not already done
-    EnhancedVideoProcessor.initialize();
+    console.log(`Starting enhanced video processing for ${videoUrl} with options:`, processingOptions);
 
-    // Start processing
-    const job = await EnhancedVideoProcessor.startProcessing(videoUrl, processingOptions);
+    // Process video directly (no job queue in simplified version)
+    const results = await EnhancedVideoProcessor.processVideoAdvanced(videoUrl, processingOptions);
 
-    return createSuccessResponse({
-      jobId: job.id,
-      status: job.status,
-      progress: job.progress,
-      createdAt: job.createdAt,
-      estimatedCompletion: new Date(Date.now() + (processingOptions.timeout || 900000)),
-      storageConfig: job.storageConfig,
-      apiEndpoints: {
-        status: `/api/video/enhanced/${job.id}`,
-        delivery: `/api/video/enhanced/${job.id}/delivery`,
-        content: `/api/storage/video/${job.id}`
-      }
-    }, requestId);
+    return NextResponse.json({
+      success: true,
+      results,
+      requestId
+    });
 
   } catch (error) {
-    const processingError = isStorageError(error) 
-      ? error 
-      : normalizeError(error, requestId);
+    const normalizedError = normalizeError(error, requestId);
+    
+    logError(normalizedError, {
+      context: 'enhanced-video-processing-api',
+      operation: 'POST /api/video/enhanced'
+    });
 
-    return createErrorResponse(processingError);
+    const statusCode = normalizedError.name === 'VideoFormatError' ? 400 : 
+                      normalizedError.name === 'VideoProcessingError' ? 422 : 500;
+
+    return NextResponse.json(
+      { 
+        error: normalizedError.message,
+        type: normalizedError.name,
+        requestId
+      },
+      { status: statusCode }
+    );
   }
 }
 
 // GET /api/video/enhanced - List all enhanced processing jobs
-export async function GET(request: NextRequest) {
-  const requestId = generateRequestId();
-
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as any;
-    const includeStats = searchParams.get('stats') === 'true';
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get('action');
 
-    // Get jobs (filtered by status if provided)
-    const jobs = EnhancedVideoProcessor.getJobs(status);
-
-    // Get system statistics if requested
-    let stats;
-    if (includeStats) {
-      stats = EnhancedVideoProcessor.getStats();
+    if (action === 'formats') {
+      const formats = EnhancedVideoProcessor.getSupportedFormats();
+      return NextResponse.json({
+        success: true,
+        formats
+      });
     }
 
-    return createSuccessResponse({
-      jobs: jobs.map(job => ({
-        id: job.id,
-        videoUrl: job.videoUrl,
-        status: job.status,
-        progress: job.progress,
-        createdAt: job.createdAt,
-        startedAt: job.startedAt,
-        completedAt: job.completedAt,
-        error: job.error,
-        storageConfig: job.storageConfig,
-        hasResults: !!job.results,
-        apiEndpoints: {
-          status: `/api/video/enhanced/${job.id}`,
-          delivery: `/api/video/enhanced/${job.id}/delivery`,
-          content: `/api/storage/video/${job.id}`
-        }
-      })),
-      summary: {
-        total: jobs.length,
-        byStatus: jobs.reduce((acc: any, job) => {
-          acc[job.status] = (acc[job.status] || 0) + 1;
-          return acc;
-        }, {}),
-        filter: status || 'all'
-      },
-      stats
-    }, requestId);
+    if (action === 'estimate') {
+      const videoUrl = searchParams.get('videoUrl');
+      if (!videoUrl) {
+        return NextResponse.json(
+          { error: 'Video URL required for cost estimation' },
+          { status: 400 }
+        );
+      }
+
+      const estimate = await EnhancedVideoProcessor.estimateProcessingCost(videoUrl);
+      return NextResponse.json({
+        success: true,
+        estimate
+      });
+    }
+
+    return NextResponse.json(
+      { error: 'Invalid action parameter' },
+      { status: 400 }
+    );
 
   } catch (error) {
-    const processingError = isStorageError(error) 
-      ? error 
-      : normalizeError(error, requestId);
+    const requestId = generateRequestId();
+    const normalizedError = normalizeError(error, requestId);
+    
+    logError(normalizedError, {
+      context: 'enhanced-video-processing-api',
+      operation: 'GET /api/video/enhanced'
+    });
 
-    return createErrorResponse(processingError);
+    return NextResponse.json(
+      { 
+        error: normalizedError.message,
+        requestId
+      },
+      { status: 500 }
+    );
   }
 } 

@@ -170,41 +170,27 @@ export default function UploadPage() {
         throw new Error('File contains dangerous content and cannot be uploaded');
       }
 
-      // Step 1: Get upload token from our API
-      const tokenResponse = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          size: file.size,
+      // Use Vercel Blob client upload - this handles token exchange internally
+      const { upload } = await import('@vercel/blob/client');
+      
+      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        clientPayload: JSON.stringify({
+          uploadId,
+          metadata: {
+            size: file.size,
+            type: file.type,
+            name: file.name
+          }
         }),
+        onUploadProgress: ({ loaded, total, percentage }) => {
+          setUploadProgress(Math.round(percentage));
+        }
       });
 
-      if (!tokenResponse.ok) {
-        const errorData = await tokenResponse.json();
-        throw new Error(errorData.message || 'Failed to get upload token');
-      }
-
-      const { uploadId, clientToken, uploadUrl, filename } = await tokenResponse.json();
-
-      // Step 2: Upload directly to Vercel Blob using the client token
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${clientToken}`,
-          'Content-Type': file.type,
-        },
-        body: file,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-      }
-
-      const blobData = await uploadResponse.json();
       setUploadProgress(100);
 
       // The callback will be triggered automatically by Vercel Blob
@@ -226,7 +212,7 @@ export default function UploadPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          videoUrl: blobData.url || uploadUrl, // Use the blob URL from response or fallback to upload URL
+          videoUrl: blob.url,
           uploadId,
           options: analysisOptions
         }),
