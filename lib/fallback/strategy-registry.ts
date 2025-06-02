@@ -307,17 +307,36 @@ export class FallbackStrategyRegistry {
     totalChains: number;
     registeredServices: number;
   } {
-    const strategiesByService = {} as Record<ServiceType, number>;
-    for (const [serviceType, strategyIds] of this.strategiesByService.entries()) {
-      strategiesByService[serviceType] = strategyIds.size;
-    }
+    const strategiesByService: Record<ServiceType, number> = {} as Record<ServiceType, number>;
     
+    this.strategiesByService.forEach((strategyIds, serviceType) => {
+      strategiesByService[serviceType] = strategyIds.size;
+    });
+
     return {
       totalStrategies: this.strategies.size,
       strategiesByService,
       totalChains: this.fallbackChains.size,
       registeredServices: this.serviceProfiles.size
     };
+  }
+
+  /**
+   * Reset the registry state (for testing)
+   */
+  reset(): void {
+    this.strategies.clear();
+    this.serviceProfiles.clear();
+    this.fallbackChains.clear();
+    this.strategiesByService.clear();
+    this.strategiesByCategory.clear();
+    this.strategiesByDegradation.clear();
+    
+    // Reset to default config
+    this.config = this.getDefaultConfig();
+    
+    // Reinitialize default profiles
+    this.initializeDefaultProfiles();
   }
 
   /**

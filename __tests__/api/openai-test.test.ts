@@ -8,6 +8,43 @@ jest.mock('@/lib/openai-config', () => ({
   testOpenAIConnection: jest.fn()
 }));
 
+// Mock the sanitization middleware
+jest.mock('@/lib/sanitization/middleware', () => ({
+  createSanitizedHandler: jest.fn((handler: any) => {
+    return async (request: any) => {
+      // Provide a mock sanitizedData object
+      const sanitizedData = {
+        body: null, // This will force the handler to parse manually
+        headers: {},
+        query: {}
+      };
+      return handler(request, sanitizedData);
+    };
+  }),
+  SANITIZATION_CONFIGS: {
+    STANDARD: {}
+  }
+}));
+
+// Mock the sanitization module
+jest.mock('@/lib/sanitization', () => ({
+  sanitize: {
+    object: jest.fn((obj) => obj),
+    textInput: jest.fn((text) => text),
+    isDangerous: jest.fn(() => false)
+  }
+}));
+
+// Mock the rate limiter
+jest.mock('@/lib/rate-limiter', () => ({
+  enforceRateLimit: jest.fn()
+}));
+
+// Mock the error handlers
+jest.mock('@/lib/errors/handlers', () => ({
+  generateRequestId: jest.fn(() => 'test-request-id')
+}));
+
 import { validateApiKey, testOpenAIConnection } from '@/lib/openai-config';
 
 describe('/api/openai/test API Route', () => {
@@ -253,11 +290,11 @@ describe('/api/openai/test API Route', () => {
       const response = await POST(request);
       const jsonResponse = await response.json();
 
-      // Verify response
-      expect(response.status).toBe(500);
+      // Verify response - the route returns 400 for invalid JSON
+      expect(response.status).toBe(400);
       expect(jsonResponse.success).toBe(false);
-      expect(jsonResponse.error).toBe('Error validating API key');
-      expect(jsonResponse.details).toBeDefined();
+      expect(jsonResponse.error).toBe('Invalid JSON in request body');
+      expect(jsonResponse.details).toBe('Please provide valid JSON');
     });
 
     it('should handle empty request body', async () => {

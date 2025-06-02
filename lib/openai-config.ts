@@ -36,6 +36,8 @@ function getOpenAIKey(): string {
 const apiKey = getOpenAIKey();
 export const openai = new OpenAI({
   apiKey: apiKey,
+  // Allow browser usage in test environment for Jest
+  dangerouslyAllowBrowser: process.env.NODE_ENV === 'test',
 });
 
 // Configuration constants

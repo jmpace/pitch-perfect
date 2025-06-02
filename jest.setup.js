@@ -1,4 +1,5 @@
 // Global test setup
+require('@testing-library/jest-dom');
 import { TextEncoder, TextDecoder } from 'util';
 
 // Make TextEncoder and TextDecoder available globally for Node.js environment

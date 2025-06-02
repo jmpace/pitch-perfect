@@ -482,4 +482,11 @@ export function applyEnvironmentAdjustments(
       ...adjustments.circuitBreaker
     } : adjustments.circuitBreaker
   };
-} 
+}
+
+/**
+ * Export aliases and utility functions for backwards compatibility
+ */
+export const createPolicyTemplate = getTemplatePolicy;
+export const ServicePoliciesMap = servicePolicies;
+export const PolicyTemplatesMap = templatePolicies; 

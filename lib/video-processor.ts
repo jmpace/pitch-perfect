@@ -131,11 +131,23 @@ export class VideoProcessor {
 
     processingJobs.set(jobId, job);
 
-    // Start processing asynchronously
-    this.processVideo(jobId, { ...this.DEFAULT_OPTIONS, ...options })
-      .catch(error => {
-        this.handleProcessingError(jobId, error);
-      });
+    // Start processing asynchronously with timeout handling
+    const timeoutMs = options.timeout || this.DEFAULT_OPTIONS.timeout;
+    
+    Promise.race([
+      this.processVideo(jobId, { ...this.DEFAULT_OPTIONS, ...options }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new VideoProcessingError(
+            `Processing timeout exceeded (${timeoutMs}ms)`,
+            { timeout: timeoutMs, jobId },
+            requestId
+          ));
+        }, timeoutMs);
+      })
+    ]).catch(error => {
+      this.handleProcessingError(jobId, error);
+    });
 
     return job;
   }
@@ -216,11 +228,15 @@ export class VideoProcessor {
         }
       };
 
-      this.updateJobStatus(jobId, 'completed', {
-        completedAt: new Date(),
-        results,
-        progress: 100
-      });
+      // Check if job was already marked as failed (e.g., due to timeout) before marking as completed
+      const currentJob = processingJobs.get(jobId);
+      if (currentJob && currentJob.status !== 'failed') {
+        this.updateJobStatus(jobId, 'completed', {
+          completedAt: new Date(),
+          results,
+          progress: 100
+        });
+      }
 
     } catch (error) {
       this.handleProcessingError(jobId, error);

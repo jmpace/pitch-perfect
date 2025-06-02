@@ -171,6 +171,174 @@ export class FallbackManager {
   removeEventListener(eventType: any, listener: (event: any) => void): void {
     fallbackRegistry.removeEventListener(eventType, listener);
   }
+
+  // Test support methods - delegate to registry and engine
+  
+  /**
+   * Reset the fallback system (for testing)
+   */
+  reset(): void {
+    // Reset registry state
+    fallbackRegistry.reset?.();
+    
+    // Reset initialization flag
+    this.initialized = false;
+    
+    // Clear service profiles
+    this.serviceProfiles?.clear();
+  }
+
+  /**
+   * Register a fallback strategy
+   */
+  registerStrategy(strategy: any): void {
+    return fallbackRegistry.registerStrategy(strategy);
+  }
+
+  /**
+   * Get a specific strategy by ID
+   */
+  getStrategy(id: string): any {
+    return fallbackRegistry.getStrategy(id);
+  }
+
+  /**
+   * Get strategies for a specific service type
+   */
+  getStrategiesForService(serviceType: ServiceType): any[] {
+    return fallbackRegistry.getStrategiesForService(serviceType);
+  }
+
+  /**
+   * Register a service profile
+   */
+  registerServiceProfile(profile: any): void {
+    // Store service profiles (simplified implementation for tests)
+    if (!this.serviceProfiles) {
+      this.serviceProfiles = new Map();
+    }
+    this.serviceProfiles.set(profile.serviceType, profile);
+  }
+
+  private serviceProfiles?: Map<string, any>;
+
+  /**
+   * Get a service profile
+   */
+  getServiceProfile(serviceType: string): any {
+    return this.serviceProfiles?.get(serviceType);
+  }
+
+  /**
+   * Determine degradation level based on capabilities
+   */
+  determineDegradationLevel(serviceType: string, availableCapabilities: string[]): string {
+    const profile = this.getServiceProfile(serviceType);
+    if (!profile) return 'none';
+
+    const essentialCaps = profile.capabilities.filter((cap: any) => cap.essential);
+    const hasAllEssential = essentialCaps.every((cap: any) => 
+      availableCapabilities.includes(cap.id)
+    );
+
+    if (hasAllEssential) {
+      return 'none';
+    } else {
+      return 'complete';
+    }
+  }
+
+  /**
+   * Execute a specific strategy
+   */
+  async executeStrategy(strategyId: string, context: any, originalOperation: any): Promise<any> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const strategy = this.getStrategy(strategyId);
+    if (!strategy) {
+      throw new Error(`Strategy ${strategyId} not found`);
+    }
+
+    try {
+      // Implement timeout if strategy specifies one
+      if (strategy.timeout && strategy.timeout > 0) {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Strategy execution timeout')), strategy.timeout)
+        );
+        
+        const result = await Promise.race([
+          strategy.execute(context, originalOperation),
+          timeoutPromise
+        ]);
+        return result;
+      } else {
+        const result = await strategy.execute(context, originalOperation);
+        return result;
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Strategy execution failed',
+        strategyUsed: strategyId
+      };
+    }
+  }
+
+  /**
+   * Execute operation with fallback strategies
+   */
+  async executeWithFallback(serviceType: string, operation: any, context: any): Promise<any> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    try {
+      // Try original operation first
+      const result = await operation();
+      return {
+        success: true,
+        data: result
+      };
+    } catch (error) {
+      // Get available strategies for this service
+      const strategies = this.getStrategiesForService(serviceType as ServiceType);
+      
+      // Try strategies in priority order
+      for (const strategy of strategies) {
+        try {
+          const result = await strategy.execute(context, operation);
+          if (result.success) {
+            return result;
+          }
+        } catch (strategyError) {
+          // Continue to next strategy
+          continue;
+        }
+      }
+
+      // All strategies failed
+      return {
+        success: false,
+        error: 'All fallback strategies failed'
+      };
+    }
+  }
+
+  /**
+   * Get the next degradation level
+   */
+  getNextDegradationLevel(currentLevel: string): string {
+    const levels = ['none', 'minimal', 'partial', 'severe', 'complete'];
+    const currentIndex = levels.indexOf(currentLevel);
+    
+    if (currentIndex === -1 || currentIndex === levels.length - 1) {
+      return 'complete';
+    }
+    
+    return levels[currentIndex + 1];
+  }
 }
 
 /**

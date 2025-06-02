@@ -6,34 +6,22 @@ import {
   AuthStatus,
   SETUP_INSTRUCTIONS
 } from '@/lib/openai-auth';
-import { validateApiKey, testOpenAIConnection } from '@/lib/openai-config';
+import { validateApiKey, openai } from '@/lib/openai-config';
 
-// Mock the OpenAI client
-jest.mock('openai', () => ({
-  OpenAI: jest.fn().mockImplementation(() => ({
-    models: {
-      list: jest.fn()
-    }
-  }))
-}));
-
-// Mock the config module
+// Mock the entire openai-config module
 jest.mock('@/lib/openai-config', () => ({
-  openai: {
-    models: {
-      list: jest.fn()
-    }
-  },
   validateApiKey: jest.fn(),
-  testOpenAIConnection: jest.fn(),
   OPENAI_CONFIG: {
     MODELS: {
-      TRANSCRIPTION: 'whisper-1',
-      VISION: 'gpt-4o',
       CHAT: 'gpt-4-turbo-preview',
       EMBEDDING: 'text-embedding-3-small',
     }
-  }
+  },
+  openai: {
+    models: {
+      list: jest.fn(),
+    },
+  },
 }));
 
 describe('OpenAI Authentication', () => {
@@ -43,6 +31,11 @@ describe('OpenAI Authentication', () => {
     jest.resetModules();
     jest.clearAllMocks();
     process.env = { ...originalEnv };
+    
+    // Reset mocks to default behavior
+    (validateApiKey as jest.Mock).mockImplementation((key: string) => {
+      return key && key.startsWith('sk-') && key.length >= 50;
+    });
   });
 
   afterAll(() => {
@@ -51,17 +44,11 @@ describe('OpenAI Authentication', () => {
 
   describe('validateApiKey', () => {
     it('should return true for valid API key format', () => {
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(true);
-      
       const validKey = 'sk-' + 'a'.repeat(48);
       expect(validateApiKey(validKey)).toBe(true);
     });
 
     it('should return false for invalid API key format', () => {
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(false);
-      
       expect(validateApiKey('invalid-key')).toBe(false);
     });
   });
@@ -69,8 +56,6 @@ describe('OpenAI Authentication', () => {
   describe('validateEnvironment', () => {
     it('should return valid status when API key is present and valid', () => {
       process.env.OPENAI_API_KEY = 'sk-' + 'a'.repeat(48);
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(true);
       
       const result = validateEnvironment();
       
@@ -91,8 +76,6 @@ describe('OpenAI Authentication', () => {
 
     it('should return invalid status when API key has invalid format', () => {
       process.env.OPENAI_API_KEY = 'invalid-format';
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(false);
       
       const result = validateEnvironment();
       
@@ -105,24 +88,15 @@ describe('OpenAI Authentication', () => {
   describe('checkAuthentication', () => {
     it('should return success status when authentication works', async () => {
       process.env.OPENAI_API_KEY = 'sk-' + 'a'.repeat(48);
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(true);
       
-      // Mock successful API call
-      const mockModels = {
-        list: jest.fn().mockResolvedValue({
-          data: [
-            { id: 'gpt-4', object: 'model' },
-            { id: 'gpt-3.5-turbo', object: 'model' },
-            { id: 'whisper-1', object: 'model' }
-          ]
-        })
-      };
-      
-      jest.doMock('@/lib/openai-config', () => ({
-        openai: { models: mockModels },
-        validateApiKey: mockValidateApiKey
-      }));
+      // Mock successful API response
+      (openai.models.list as jest.Mock).mockResolvedValue({
+        data: [
+          { id: 'gpt-4', object: 'model' },
+          { id: 'gpt-3.5-turbo', object: 'model' },
+          { id: 'whisper-1', object: 'model' }
+        ]
+      });
 
       const result = await checkAuthentication();
       
@@ -135,18 +109,9 @@ describe('OpenAI Authentication', () => {
 
     it('should return error status when API call fails', async () => {
       process.env.OPENAI_API_KEY = 'sk-' + 'a'.repeat(48);
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(true);
       
       // Mock failed API call
-      const mockModels = {
-        list: jest.fn().mockRejectedValue(new Error('401 Unauthorized'))
-      };
-      
-      jest.doMock('@/lib/openai-config', () => ({
-        openai: { models: mockModels },
-        validateApiKey: mockValidateApiKey
-      }));
+      (openai.models.list as jest.Mock).mockRejectedValue(new Error('401 Unauthorized'));
 
       const result = await checkAuthentication();
       
@@ -169,22 +134,11 @@ describe('OpenAI Authentication', () => {
   describe('getAuthenticatedClient', () => {
     it('should return client when authentication succeeds', async () => {
       process.env.OPENAI_API_KEY = 'sk-' + 'a'.repeat(48);
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(true);
       
       // Mock successful authentication
-      const mockModels = {
-        list: jest.fn().mockResolvedValue({
-          data: [{ id: 'gpt-4', object: 'model' }]
-        })
-      };
-      
-      const mockOpenAI = { models: mockModels };
-      
-      jest.doMock('@/lib/openai-config', () => ({
-        openai: mockOpenAI,
-        validateApiKey: mockValidateApiKey
-      }));
+      (openai.models.list as jest.Mock).mockResolvedValue({
+        data: [{ id: 'gpt-4', object: 'model' }]
+      });
 
       const client = await getAuthenticatedClient();
       expect(client).toBeDefined();
@@ -201,8 +155,6 @@ describe('OpenAI Authentication', () => {
   describe('getSetupStatus', () => {
     it('should return setup instructions and environment status', () => {
       process.env.OPENAI_API_KEY = 'sk-' + 'a'.repeat(48);
-      const mockValidateApiKey = validateApiKey as jest.MockedFunction<typeof validateApiKey>;
-      mockValidateApiKey.mockReturnValue(true);
       
       const status = getSetupStatus();
       

@@ -21,6 +21,27 @@ import {
 } from './types';
 
 /**
+ * Converted Error for Retry Logic
+ * Used to convert generic errors to BaseStorageError format for retry processing
+ */
+class ConvertedError extends BaseStorageError {
+  readonly code: string;
+  readonly statusCode: number;
+  
+  constructor(
+    message: string,
+    extractedCode: string,
+    extractedStatus: number,
+    originalError: any,
+    requestId?: string
+  ) {
+    super(message, { originalError, extractedCode, extractedStatus }, requestId);
+    this.code = extractedCode;
+    this.statusCode = extractedStatus;
+  }
+}
+
+/**
  * Circuit Breaker Error for when operations are blocked
  */
 class CircuitBreakerError extends InternalServerError {
@@ -36,7 +57,10 @@ class CircuitBreakerError extends InternalServerError {
 /**
  * Operation Timeout Error
  */
-class OperationTimeoutError extends InternalServerError {
+class OperationTimeoutError extends BaseStorageError {
+  readonly code = 'TIMEOUT_ERROR';
+  readonly statusCode = 408;
+
   constructor(timeoutMs: number, requestId?: string) {
     super(
       `Operation timed out after ${timeoutMs}ms`,
@@ -49,7 +73,7 @@ class OperationTimeoutError extends InternalServerError {
 /**
  * Circuit Breaker State Management
  */
-class CircuitBreaker {
+export class CircuitBreaker {
   private state: CircuitBreakerState = 'closed';
   private failures = 0;
   private successes = 0;
@@ -148,6 +172,10 @@ class BudgetTracker {
     this.usedTime += delay;
   }
 
+  recordDelay(delay: number): void {
+    this.usedTime += delay;
+  }
+
   recordSuccess(): void {
     if (this.config.resetOnSuccess) {
       this.reset();
@@ -199,10 +227,10 @@ class DelayCalculator {
   ): number {
     switch (policy.strategy) {
       case 'exponential':
-        return policy.baseDelay * Math.pow(2, attempt);
+        return policy.baseDelay * Math.pow(2, attempt - 1);
       
       case 'linear':
-        return policy.baseDelay * (attempt + 1);
+        return policy.baseDelay * attempt;
       
       case 'fixed':
         return policy.baseDelay;
@@ -212,10 +240,10 @@ class DelayCalculator {
           return policy.customDelayFn(attempt, policy.baseDelay, context);
         }
         // Fallback to exponential if no custom function
-        return policy.baseDelay * Math.pow(2, attempt);
+        return policy.baseDelay * Math.pow(2, attempt - 1);
       
       default:
-        return policy.baseDelay * Math.pow(2, attempt);
+        return policy.baseDelay * Math.pow(2, attempt - 1);
     }
   }
 
@@ -302,6 +330,110 @@ class RetryConditionEvaluator {
 }
 
 /**
+ * Retry Policy Manager
+ * Manages registration, retrieval, and application of retry policies
+ */
+export class RetryPolicyManager {
+  private policies = new Map<string, RetryPolicy>();
+  private metrics = new Map<string, any>();
+
+  /**
+   * Register a retry policy with a name
+   */
+  registerPolicy(name: string, policy: RetryPolicy): void {
+    this.policies.set(name, policy);
+  }
+
+  /**
+   * Get a registered policy by name
+   */
+  getPolicy(name: string): RetryPolicy {
+    return this.policies.get(name) || this.getDefaultPolicy();
+  }
+
+  /**
+   * Create a policy from a template
+   */
+  createFromTemplate(templateName: string): RetryPolicy {
+    // This would integrate with the policies module
+    // For now, return a basic policy based on template name
+    switch (templateName) {
+      case 'aggressive':
+        return {
+          name: 'aggressive',
+          maxAttempts: 8,
+          baseDelay: 200,
+          maxDelay: 5000,
+          strategy: 'exponential',
+          jitter: 'full'
+        };
+      case 'conservative':
+        return {
+          name: 'conservative',
+          maxAttempts: 3,
+          baseDelay: 1000,
+          maxDelay: 10000,
+          strategy: 'linear',
+          jitter: 'equal'
+        };
+      default:
+        return this.getDefaultPolicy();
+    }
+  }
+
+  /**
+   * Get service-specific policy
+   */
+  getServicePolicy(serviceName: string): RetryPolicy {
+    switch (serviceName) {
+      case 'openai':
+        return {
+          name: 'openai',
+          maxAttempts: 4,
+          baseDelay: 1000,
+          maxDelay: 16000,
+          strategy: 'exponential',
+          jitter: 'decorrelated',
+          retryableErrors: ['RATE_LIMIT_ERROR', 'NETWORK_ERROR', 'TIMEOUT_ERROR']
+        };
+      case 'storage':
+        return {
+          name: 'storage',
+          maxAttempts: 3,
+          baseDelay: 500,
+          maxDelay: 5000,
+          strategy: 'exponential',
+          jitter: 'equal',
+          retryableErrors: ['STORAGE_ERROR', 'NETWORK_ERROR']
+        };
+      default:
+        return this.getDefaultPolicy();
+    }
+  }
+
+  /**
+   * Get metrics for a policy
+   */
+  getMetrics(policyName: string): any {
+    return this.metrics.get(policyName) || {};
+  }
+
+  /**
+   * Get default policy
+   */
+  private getDefaultPolicy(): RetryPolicy {
+    return {
+      name: 'default',
+      maxAttempts: 3,
+      baseDelay: 1000,
+      maxDelay: 8000,
+      strategy: 'exponential',
+      jitter: 'equal'
+    };
+  }
+}
+
+/**
  * Main Retry Engine
  */
 export class RetryEngine {
@@ -337,10 +469,21 @@ export class RetryEngine {
 
     let lastError: BaseStorageError | undefined;
 
-    for (let attempt = 0; attempt <= policy.maxAttempts; attempt++) {
+    for (let attempt = 0; attempt < policy.maxAttempts; attempt++) {
       context.currentAttempt = attempt;
       context.remainingAttempts = policy.maxAttempts - attempt;
       context.lastAttemptTime = Date.now();
+
+      // Check budget constraints before starting this attempt (including this attempt)
+      if (budgetTracker && budgetTracker.getUsage().attempts >= (policy.budget?.maxTotalAttempts || Infinity)) {
+        return this.createFailureResult(
+          attempts, 
+          lastError || new InternalServerError('Budget exhausted before attempt', {}, context.requestId), 
+          policy, 
+          context, 
+          { budgetExhausted: true }
+        );
+      }
 
       const attemptResult: RetryAttemptResult<T> = {
         success: false,
@@ -348,6 +491,11 @@ export class RetryEngine {
         delay: 0,
         timestamp: Date.now()
       };
+
+      // Record this attempt in budget tracker immediately
+      if (budgetTracker) {
+        budgetTracker.recordAttempt(0); // Record the attempt, delay will be added later if retry happens
+      }
 
       try {
         // Execute with circuit breaker if configured
@@ -376,9 +524,28 @@ export class RetryEngine {
         };
 
       } catch (error) {
-        lastError = error instanceof BaseStorageError ? 
-          error : 
-          new InternalServerError('Unexpected error', { originalError: error }, context.requestId);
+        // Convert generic errors to BaseStorageError for consistent handling
+        if (error instanceof BaseStorageError) {
+          lastError = error;
+        } else {
+          // Extract error properties from generic errors (like test mocks)
+          const errorCode = (error as any)?.code || 'UNKNOWN_ERROR';
+          const statusCode = (error as any)?.status || (error as any)?.statusCode || 500;
+          const message = error instanceof Error ? error.message : String(error);
+          
+          lastError = new ConvertedError(
+            message,
+            errorCode,
+            statusCode,
+            error,
+            context.requestId
+          );
+        }
+
+        // Check if this was a timeout error
+        const isTimeout = error instanceof OperationTimeoutError || 
+                         (error as any)?.code === 'TIMEOUT_ERROR' ||
+                         (error as any)?.message?.toLowerCase().includes('timeout');
 
         attemptResult.error = lastError;
         context.previousErrors.push(lastError);
@@ -389,15 +556,34 @@ export class RetryEngine {
         }
 
         // Check if we should retry
-        if (attempt >= policy.maxAttempts) {
-          // No more attempts
+        if (attempt >= policy.maxAttempts - 1) {
+          // No more attempts left
           attempts.push(attemptResult);
+          if (isTimeout) {
+            return this.createFailureResult(
+              attempts, 
+              lastError, 
+              policy, 
+              context, 
+              { timeoutExceeded: true }
+            );
+          }
           break;
         }
 
-        const shouldRetry = RetryConditionEvaluator.shouldRetry(lastError, attempt, policy, context);
+        const shouldRetry = RetryConditionEvaluator.shouldRetry(lastError, attempt + 1, policy, context);
         if (!shouldRetry) {
           attempts.push(attemptResult);
+          // If we're not retrying due to a timeout error, mark it as timeout exceeded
+          if (isTimeout) {
+            return this.createFailureResult(
+              attempts, 
+              lastError, 
+              policy, 
+              context, 
+              { timeoutExceeded: true }
+            );
+          }
           break;
         }
 
@@ -436,9 +622,10 @@ export class RetryEngine {
           undefined;
         context.totalDelayTime += delay;
 
-        // Record budget usage
-        budgetTracker?.recordAttempt(delay);
+        // Update budget usage with delay time only (attempt already recorded)
         if (budgetTracker) {
+          // Add delay time to the budget tracker
+          budgetTracker.recordDelay(delay);
           context.budgetUsed = budgetTracker.getUsage();
         }
 
@@ -567,5 +754,23 @@ export class RetryEngine {
    */
   resetBudgetTrackers(): void {
     this.budgetTrackers.clear();
+  }
+
+  /**
+   * Calculate delay for testing purposes
+   * Delegates to DelayCalculator with a basic context
+   */
+  calculateDelay(attempt: number, policy: RetryPolicy): number {
+    const context: RetryContext = {
+      operationId: 'test',
+      requestId: 'test',
+      startTime: Date.now(),
+      totalElapsed: 0,
+      currentAttempt: attempt,
+      remainingAttempts: policy.maxAttempts - attempt,
+      previousErrors: [],
+      totalDelayTime: 0
+    };
+    return DelayCalculator.calculateDelay(attempt, policy, context);
   }
 } 

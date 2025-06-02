@@ -161,33 +161,28 @@ export interface RetryAttemptResult<T> {
 /**
  * Final Retry Result
  */
-export interface RetryResult<T> {
-  // Outcome
+export interface RetryResult<T = any> {
   success: boolean;
   data?: T;
   finalError?: BaseStorageError;
-
-  // Execution metrics
   totalAttempts: number;
   totalTime: number;
   totalDelayTime: number;
-  
-  // Attempt history
   attempts: RetryAttemptResult<T>[];
-  
-  // Policy and context
   policy: RetryPolicy;
   context: RetryContext;
   
-  // Failure analysis
-  wasAborted?: boolean;            // Operation was aborted
-  budgetExhausted?: boolean;       // Retry budget exhausted
-  circuitBreakerTriggered?: boolean;  // Circuit breaker opened
-  timeoutExceeded?: boolean;       // Individual attempt timeout
+  // Additional result properties
+  wasAborted?: boolean;
+  budgetExhausted?: boolean;
+  timeoutExceeded?: boolean;
   
-  // Recovery information
-  fallbackUsed?: boolean;          // Whether fallback was triggered
-  degradationLevel?: string;       // Service degradation applied
+  // Performance and monitoring data
+  circuitBreakerTriggered?: boolean;
+  retryBudgetUsed?: {
+    attempts: number;
+    timeMs: number;
+  };
 }
 
 /**

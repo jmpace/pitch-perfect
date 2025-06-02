@@ -312,7 +312,7 @@ export function createFileTooLargeError(size: number, limit: number, requestId?:
 export function createUnsupportedFileError(type: string, allowed: string[], requestId?: string): FileTypeError {
   return new FileTypeError(
     `File type '${type}' is not supported. Allowed types: ${allowed.join(', ')}`,
-    { providedType: type, allowedTypes: allowed },
+    { receivedType: type, allowedTypes: allowed },
     requestId
   );
 }
