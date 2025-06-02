@@ -1,4 +1,5 @@
-import { NextRequest } from 'next/server';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { NextRequest, NextResponse } from 'next/server';
 import { UploadProgressTracker, generateUploadId } from '@/lib/upload-progress';
 import { 
   generateRequestId,
@@ -7,7 +8,7 @@ import {
   normalizeError,
   logError
 } from '@/lib/errors/handlers';
-import { validateFile } from '@/lib/validation';
+import { validateFileDetailed } from '@/lib/validation';
 import { 
   isStorageError,
   ProcessingError,
@@ -21,125 +22,133 @@ async function handleUploadRequest(request: NextRequest, sanitizedData: Sanitize
   const requestId = generateRequestId();
 
   try {
-    // Rate limiting check
-    enforceRateLimit(request, 'UPLOAD', requestId);
-
-    const body = await request.json();
-    const { filename, contentType, size } = body;
-
-    // Validate the file parameters
-    if (!filename || !contentType || !size) {
+    // Rate limiting
+    const rateLimitResult = enforceRateLimit(request, 'UPLOAD', requestId);
+    if (!rateLimitResult.isAllowed) {
       throw new ProcessingError(
-        'Missing required file parameters',
-        { filename, contentType, size },
-        requestId
+        'Rate limit exceeded',
+        { rateLimitResult }
       );
     }
 
-    // Sanitize the filename for security
-    const sanitizedFilename = sanitize.filename(filename);
+    const body = (await request.json()) as HandleUploadBody;
 
-    // Create a mock File object for validation
-    const mockFile = {
-      name: sanitizedFilename,
-      type: contentType,
-      size: size
-    } as File;
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
+        // Parse client payload to get file metadata
+        let uploadId: string;
+        let fileMetadata: any;
+        
+        try {
+          const payload = clientPayload ? JSON.parse(clientPayload) : {};
+          uploadId = payload.uploadId || generateUploadId();
+          fileMetadata = payload.metadata || {};
+        } catch (error) {
+          uploadId = generateUploadId();
+          fileMetadata = {};
+        }
 
-    // Validate file with comprehensive error handling
-    validateFile(mockFile, requestId);
+        // Validate file metadata if provided
+        if (fileMetadata.size || fileMetadata.type) {
+          const mockFile = {
+            name: pathname,
+            size: fileMetadata.size || 0,
+            type: fileMetadata.type || 'application/octet-stream'
+          } as File;
 
-    // Check if we have Blob token for Vercel Blob
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      throw new ConfigurationError(
-        'Blob storage not configured. Large file uploads require Vercel Blob storage.',
-        { hasToken: false },
-        requestId
-      );
-    }
+          const validation = validateFileDetailed(mockFile);
+          if (!validation.isValid) {
+            throw new ProcessingError(
+              'File validation failed',
+              { errors: validation.errors }
+            );
+          }
+        }
 
-    // Generate upload ID for tracking
-    const uploadId = generateUploadId();
+        // Initialize progress tracking
+        const progressTracker = new UploadProgressTracker(uploadId, fileMetadata.size || 0);
 
-    // Generate a unique filename with timestamp to avoid conflicts
-    const timestamp = Date.now();
-    const uniqueFilename = `${timestamp}_${sanitizedFilename}`;
-
-    // Generate a client token for direct uploads to Vercel Blob
-    // This allows the client to upload directly without going through our function
-    const tokenResponse = await fetch('https://blob.vercel-storage.com/api/client-token', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-        'Content-Type': 'application/json',
+        return {
+          allowedContentTypes: [
+            'video/mp4',
+            'video/avi',
+            'video/mov',
+            'video/wmv',
+            'video/webm',
+            'video/quicktime',
+            'application/octet-stream'
+          ],
+          maximumSizeInBytes: 100 * 1024 * 1024, // 100MB limit
+          addRandomSuffix: true,
+          tokenPayload: JSON.stringify({
+            uploadId,
+            requestId,
+            timestamp: Date.now()
+          })
+        };
       },
-      body: JSON.stringify({
-        pathname: uniqueFilename,
-        contentType,
-        callbackUrl: `${process.env.VERCEL_URL || 'http://localhost:3000'}/api/upload/callback`,
-        clientPayload: JSON.stringify({ 
-          uploadId, 
-          originalFilename: filename, 
-          sanitizedFilename,
-          size,
-          contentType
-        }),
-      }),
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        // Parse token payload
+        let uploadId: string;
+        let requestId: string;
+        
+        try {
+          const payload = JSON.parse(tokenPayload || '{}');
+          uploadId = payload.uploadId;
+          requestId = payload.requestId;
+        } catch (error) {
+          console.error('Failed to parse token payload:', error);
+          uploadId = generateUploadId();
+          requestId = generateRequestId();
+        }
+
+        try {
+          // Update progress tracking
+          const progressTracker = new UploadProgressTracker(uploadId, 0);
+          progressTracker.setCompleted();
+
+          console.log('Upload completed successfully:', {
+            uploadId,
+            requestId,
+            blobUrl: blob.url,
+            pathname: blob.pathname
+          });
+
+        } catch (error) {
+          console.error('Error in upload completion handler:', error);
+          
+          // Update progress with error
+          try {
+            const progressTracker = new UploadProgressTracker(uploadId, 0);
+            progressTracker.setFailed('Failed to process uploaded file');
+          } catch (trackerError) {
+            console.error('Failed to update progress tracker:', trackerError);
+          }
+        }
+      },
     });
 
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      throw new ProcessingError(
-        `Failed to generate client token: ${tokenResponse.status}`,
-        { errorText, status: tokenResponse.status },
-        requestId
+    return NextResponse.json(jsonResponse);
+
+  } catch (error: any) {
+    const normalizedError = normalizeError(error, requestId);
+    logError(normalizedError);
+
+    if (isStorageError(error)) {
+      return createErrorResponse(
+        new ConfigurationError(
+          'Storage configuration error',
+          { originalError: normalizedError },
+          requestId
+        )
       );
     }
 
-    const tokenData = await tokenResponse.json();
-
-    // Initialize progress tracking for this upload
-    const progressTracker = new UploadProgressTracker(uploadId, size);
-    progressTracker.updateProgress(0); // Start tracking
-
-    return createSuccessResponse({
-      uploadId,
-      clientToken: tokenData.token,
-      uploadUrl: `https://blob.vercel-storage.com/${uniqueFilename}`,
-      filename: sanitizedFilename,
-      originalFilename: filename,
-      size,
-      contentType,
-      uniqueFilename
-    }, requestId);
-
-  } catch (error) {
-    const storageError = isStorageError(error) 
-      ? error 
-      : normalizeError(error, requestId);
-
-    // Enhanced logging with context
-    const clientIP = (sanitizedData.headers['x-forwarded-for'] || 
-                     sanitizedData.headers['x-real-ip'] ||
-                     request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
-                     'unknown');
-    const userAgent = sanitizedData.headers['user-agent'] || request.headers.get('user-agent');
-    logError(storageError, {
-      endpoint: '/api/upload',
-      clientIP: clientIP,
-      userAgent: userAgent,
-    });
-
-    return createErrorResponse(storageError);
+    return createErrorResponse(normalizedError);
   }
 }
 
-// Export the sanitized handler
-export const POST = createSanitizedHandler(handleUploadRequest, {
-  sanitizeQuery: true,
-  sanitizeBody: true,
-  sanitizeHeaders: ['user-agent', 'x-forwarded-for', 'x-real-ip'],
-  blockDangerous: false,
-  maxBodySize: 10 * 1024, // Small JSON payload only
-}); 
+// Apply sanitization middleware
+export const POST = createSanitizedHandler(handleUploadRequest); 
