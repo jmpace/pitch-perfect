@@ -299,8 +299,32 @@ export class EnhancedVideoProcessor {
           size: 0,
           sampleRate: 0,
           channels: 0,
-          storageResult: { success: false, url: '', metadata: { size: 0, contentType: 'audio/none', uploadedAt: new Date(), compressed: false, storageId: '' }, requestId: generateRequestId() },
-          deliveryUrls: { direct: '' }
+          storageResult: { 
+            success: false, 
+            url: '', 
+            metadata: { 
+              size: 0, 
+              contentType: 'audio/none', 
+              uploadedAt: new Date(), 
+              compressed: false, 
+              storageId: '' 
+            }, 
+            requestId: generateRequestId() 
+          },
+          deliveryUrls: { 
+            success: false,
+            content: {
+              url: '',
+              metadata: {
+                size: 0,
+                contentType: 'audio/none',
+                lastModified: new Date(),
+                cacheControl: 'no-cache',
+                compressed: false
+              }
+            },
+            requestId: generateRequestId()
+          }
         },
         videoMetadata,
         processingStats: {
@@ -373,7 +397,7 @@ export class EnhancedVideoProcessor {
 
                 // Store frame with enhanced storage
                 const storageResult = await StorageDeliveryManager.storeContent(
-                  ContentType.FRAME,
+                  ContentType.FRAMES,
                   jobId,
                   `frame_${timestamp}s.jpg`,
                   frameBuffer,
@@ -388,8 +412,8 @@ export class EnhancedVideoProcessor {
                   }
                 );
 
-                // Generate delivery URLs
-                const deliveryUrls = await StorageDeliveryManager.generateDeliveryUrls(
+                // Generate delivery URLs using retrieveContent method
+                const deliveryUrls = await StorageDeliveryManager.retrieveContent(
                   storageResult.url,
                   {
                     includeSignedUrl: options.generateSignedUrls,
@@ -484,6 +508,21 @@ export class EnhancedVideoProcessor {
               requestId: generateRequestId()
             };
 
+            const emptyDeliveryResult: DeliveryResult = {
+              success: false,
+              content: {
+                url: '',
+                metadata: {
+                  size: 0,
+                  contentType: 'audio/none',
+                  lastModified: new Date(),
+                  cacheControl: 'no-cache',
+                  compressed: false
+                }
+              },
+              requestId: generateRequestId()
+            };
+
             resolve({
               url: '',
               duration: videoMetadata.duration,
@@ -492,7 +531,7 @@ export class EnhancedVideoProcessor {
               sampleRate: 0,
               channels: 0,
               storageResult: emptyStorageResult,
-              deliveryUrls: { direct: '' }
+              deliveryUrls: emptyDeliveryResult
             });
             return;
           }
@@ -535,8 +574,8 @@ export class EnhancedVideoProcessor {
                   }
                 );
 
-                // Generate delivery URLs
-                const deliveryUrls = await StorageDeliveryManager.generateDeliveryUrls(
+                // Generate delivery URLs using retrieveContent method
+                const deliveryUrls = await StorageDeliveryManager.retrieveContent(
                   storageResult.url,
                   {
                     includeSignedUrl: options.generateSignedUrls,
@@ -710,8 +749,8 @@ export class EnhancedVideoProcessor {
     return {
       direct: frames.length > 0 ? frames[0].url : '',
       cdn: undefined, // Would be implemented with CDN integration
-      signed: frames.length > 0 ? frames[0].deliveryUrls.signed : undefined,
-      streaming: audio?.deliveryUrls.streaming
+      signed: frames.length > 0 ? frames[0].deliveryUrls.content.signedUrl : undefined,
+      streaming: audio?.deliveryUrls.content.streamingUrl
     };
   }
 

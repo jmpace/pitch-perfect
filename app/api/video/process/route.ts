@@ -1,6 +1,6 @@
-// POST /api/video/process - Start video processing
+// POST /api/video/process - Start video processing with queue support
 import { NextRequest, NextResponse } from 'next/server';
-import { VideoProcessor, VideoProcessingOptions } from '@/lib/video-processor';
+import { VideoProcessorQueue, VideoProcessingOptions } from '@/lib/video-processor-queue';
 import { 
   ValidationError,
   VideoProcessingError,
@@ -18,6 +18,7 @@ export interface ProcessVideoResponse {
   status: string;
   estimatedTime: number;
   message: string;
+  processingService: string;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -45,20 +46,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Start processing
-    const job = await VideoProcessor.startProcessing(
+    // Start processing with queue using enhanced processor
+    const job = await VideoProcessorQueue.startProcessing(
       body.videoUrl,
       body.options || {}
     );
 
-    // Estimate processing time (2:1 ratio as per architecture)
-    const estimatedTime = 600; // 10 minutes default, would calculate based on video metadata
+    // Calculate realistic processing time estimate based on video URL
+    // For now, use a reasonable default - would calculate based on actual video metadata
+    const estimatedTime = 300; // 5 minutes for demo purposes
 
     const response: ProcessVideoResponse = {
       jobId: job.id,
       status: job.status,
       estimatedTime,
-      message: 'Video processing started'
+      message: 'Video processing queued successfully',
+      processingService: job.processingService
     };
 
     return NextResponse.json(response, { status: 202 });
@@ -70,13 +73,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Handle unexpected errors
     const requestId = generateRequestId();
+    console.error('Video processing error:', error);
+    
     return NextResponse.json({
       success: false,
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'An unexpected error occurred',
+        message: 'An unexpected error occurred while starting video processing',
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       }
     }, { status: 500 });
   }
