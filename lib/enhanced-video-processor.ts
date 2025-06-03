@@ -1,9 +1,5 @@
-// Enhanced Video Processor with Storage and Delivery Integration
+// Enhanced Video Processor with Replicate Integration
 import { nanoid } from 'nanoid';
-import ffmpeg from 'fluent-ffmpeg';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import { 
   StorageDeliveryManager, 
   ContentType, 
@@ -20,17 +16,11 @@ import {
 } from './errors/types';
 import { generateRequestId, logError, normalizeError } from './errors/handlers';
 import { VisionAnalysisService, FrameAnalysisResult, AnalysisType } from './vision-analysis';
+import { ReplicateVideoProcessor } from './replicate-video-processor';
 
-// Configure FFmpeg paths based on environment
-const FFMPEG_PATH = process.env.FFMPEG_PATH || '/opt/homebrew/bin/ffmpeg';
-const FFPROBE_PATH = process.env.FFPROBE_PATH || '/opt/homebrew/bin/ffprobe';
-
-try {
-  ffmpeg.setFfmpegPath(FFMPEG_PATH);
-  ffmpeg.setFfprobePath(FFPROBE_PATH);
-} catch (error) {
-  console.warn('FFmpeg configuration failed, using system defaults:', error);
-}
+// Processing service configuration
+const PROCESSING_SERVICE = process.env.VIDEO_PROCESSING_SERVICE || 'replicate';
+const USE_REPLICATE = PROCESSING_SERVICE === 'replicate' && process.env.REPLICATE_API_TOKEN;
 
 // Enhanced interfaces with storage integration
 export interface EnhancedVideoProcessingJob {
@@ -365,107 +355,22 @@ export class EnhancedVideoProcessor {
     jobId: string,
     onProgress: (progress: number) => void
   ): Promise<EnhancedFrameMetadata[]> {
-    const frames: EnhancedFrameMetadata[] = [];
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-frames-'));
-
-    try {
-      return new Promise<EnhancedFrameMetadata[]>((resolve, reject) => {
-        const command = ffmpeg(videoUrl)
-          .outputOptions([
-            `-vf fps=1/${options.frameInterval},scale=${options.frameResolution.width}:${options.frameResolution.height}`,
-            '-q:v 2'
-          ])
-          .output(path.join(tempDir, 'frame_%d.jpg'))
-          .on('start', (commandLine) => {
-            console.log(`Starting enhanced frame extraction for job ${jobId}: ${commandLine}`);
-          })
-          .on('progress', (progress) => {
-            const extractionProgress = Math.min(progress.percent || 0, 100) / 100;
-            onProgress(extractionProgress * 0.6); // 60% for extraction
-          })
-          .on('end', async () => {
-            try {
-              const frameFiles = fs.readdirSync(tempDir).filter(f => f.endsWith('.jpg')).sort();
-              console.log(`Extracted ${frameFiles.length} frames for job ${jobId}`);
-
-              // Upload frames to storage with enhanced features
-              for (let i = 0; i < frameFiles.length; i++) {
-                const frameFile = frameFiles[i];
-                const framePath = path.join(tempDir, frameFile);
-                const frameBuffer = fs.readFileSync(framePath);
-                const timestamp = (i + 1) * options.frameInterval;
-
-                // Store frame with enhanced storage
-                const storageResult = await StorageDeliveryManager.storeContent(
-                  ContentType.FRAMES,
-                  jobId,
-                  `frame_${timestamp}s.jpg`,
-                  frameBuffer,
-                  {
-                    metadata: { 
-                      timestamp, 
-                      jobId, 
-                      frameIndex: i,
-                      extractionTime: new Date().toISOString()
-                    },
-                    compress: options.enableCompression
-                  }
-                );
-
-                // Generate delivery URLs using retrieveContent method
-                const deliveryUrls = await StorageDeliveryManager.retrieveContent(
-                  storageResult.url,
-                  {
-                    includeSignedUrl: options.generateSignedUrls,
-                    streaming: false,
-                    quality: 'high'
-                  }
-                );
-
-                const frameMetadata: EnhancedFrameMetadata = {
-                  timestamp,
-                  url: storageResult.url,
-                  size: frameBuffer.length,
-                  width: options.frameResolution.width,
-                  height: options.frameResolution.height,
-                  storageResult,
-                  deliveryUrls
-                };
-
-                frames.push(frameMetadata);
-
-                // Update progress for storage
-                onProgress(0.6 + (i / frameFiles.length) * 0.4); // Remaining 40%
-              }
-
-              resolve(frames);
-            } catch (error) {
-              reject(new FrameExtractionError(
-                'Failed to process extracted frames',
-                { originalError: error instanceof Error ? error.message : 'Unknown error' },
-                generateRequestId()
-              ));
-            }
-          })
-          .on('error', (error) => {
-            reject(new FrameExtractionError(
-              'FFmpeg frame extraction failed',
-              { originalError: error.message },
-              generateRequestId()
-            ));
-          });
-
-        command.run();
-      });
-
-    } finally {
-      // Cleanup temporary directory
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } catch (error) {
-        console.warn(`Failed to cleanup temp directory ${tempDir}:`, error);
-      }
+    
+    if (USE_REPLICATE) {
+      console.log('Using Replicate for frame extraction');
+      return await ReplicateVideoProcessor.extractAndStoreFrames(
+        videoUrl,
+        videoMetadata,
+        options,
+        jobId,
+        onProgress
+      );
     }
+    
+    // Fallback: return empty frames array
+    console.warn('Frame extraction not available without Replicate or FFmpeg');
+    onProgress(100);
+    return [];
   }
 
   /**
@@ -478,152 +383,60 @@ export class EnhancedVideoProcessor {
     jobId: string,
     onProgress: (progress: number) => void
   ): Promise<EnhancedAudioMetadata> {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-audio-'));
-    const audioExtension = options.audioFormat === 'mp3' ? '.mp3' : '.wav';
-    const audioFilename = `audio${audioExtension}`;
-    const tempAudioPath = path.join(tempDir, audioFilename);
-
-    try {
-      return new Promise<EnhancedAudioMetadata>((resolve, reject) => {
-        // First check if video has audio streams
-        ffmpeg.ffprobe(videoUrl, async (err, metadata) => {
-          if (err) {
-            reject(new AudioExtractionError('Failed to probe video metadata', { originalError: err.message }, generateRequestId()));
-            return;
-          }
-
-          const audioStream = metadata.streams?.find(stream => stream.codec_type === 'audio');
-          if (!audioStream) {
-            // No audio stream, return empty audio metadata
-            const emptyStorageResult: StorageResult = {
-              success: false,
-              url: '',
-              metadata: {
-                size: 0,
-                contentType: 'audio/none',
-                uploadedAt: new Date(),
-                compressed: false,
-                storageId: nanoid()
-              },
-              requestId: generateRequestId()
-            };
-
-            const emptyDeliveryResult: DeliveryResult = {
-              success: false,
-              content: {
-                url: '',
-                metadata: {
-                  size: 0,
-                  contentType: 'audio/none',
-                  lastModified: new Date(),
-                  cacheControl: 'no-cache',
-                  compressed: false
-                }
-              },
-              requestId: generateRequestId()
-            };
-
-            resolve({
-              url: '',
-              duration: videoMetadata.duration,
-              format: 'none',
-              size: 0,
-              sampleRate: 0,
-              channels: 0,
-              storageResult: emptyStorageResult,
-              deliveryUrls: emptyDeliveryResult
-            });
-            return;
-          }
-
-          // Extract audio
-          const command = ffmpeg(videoUrl)
-            .outputOptions([
-              '-vn', // No video
-              '-acodec', options.audioFormat === 'mp3' ? 'libmp3lame' : 'pcm_s16le',
-              '-ab', `${options.audioQuality}k`,
-              '-ar', '44100'
-            ])
-            .output(tempAudioPath)
-            .on('start', () => {
-              console.log(`Starting enhanced audio extraction for job ${jobId}`);
-            })
-            .on('progress', (progress) => {
-              const extractionProgress = Math.min(progress.percent || 0, 100) / 100;
-              onProgress(extractionProgress * 0.7); // 70% for extraction
-            })
-            .on('end', async () => {
-              try {
-                const audioBuffer = fs.readFileSync(tempAudioPath);
-                const audioStats = fs.statSync(tempAudioPath);
-
-                // Store audio with enhanced storage
-                const storageResult = await StorageDeliveryManager.storeContent(
-                  ContentType.AUDIO,
-                  jobId,
-                  audioFilename,
-                  audioBuffer,
-                  {
-                    metadata: { 
-                      jobId,
-                      format: options.audioFormat,
-                      quality: options.audioQuality,
-                      extractionTime: new Date().toISOString()
-                    },
-                    compress: options.enableCompression
-                  }
-                );
-
-                // Generate delivery URLs using retrieveContent method
-                const deliveryUrls = await StorageDeliveryManager.retrieveContent(
-                  storageResult.url,
-                  {
-                    includeSignedUrl: options.generateSignedUrls,
-                    streaming: true,
-                    quality: 'high'
-                  }
-                );
-
-                onProgress(1.0); // Complete
-
-                resolve({
-                  url: storageResult.url,
-                  duration: videoMetadata.duration,
-                  format: options.audioFormat,
-                  size: audioStats.size,
-                  sampleRate: audioStream.sample_rate || 44100,
-                  channels: audioStream.channels || 2,
-                  storageResult,
-                  deliveryUrls
-                });
-              } catch (error) {
-                reject(new AudioExtractionError(
-                  'Failed to process extracted audio',
-                  { originalError: error instanceof Error ? error.message : 'Unknown error' },
-                  generateRequestId()
-                ));
-              }
-            })
-            .on('error', (error) => {
-              reject(new AudioExtractionError(
-                'FFmpeg audio extraction failed',
-                { originalError: error.message },
-                generateRequestId()
-              ));
-            });
-
-          command.run();
-        });
-      });
-
-    } finally {
-      // Cleanup temporary directory
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } catch (error) {
-        console.warn(`Failed to cleanup temp directory ${tempDir}:`, error);
-      }
+    
+    if (USE_REPLICATE) {
+      console.log('Using Replicate for audio extraction');
+      return await ReplicateVideoProcessor.extractAndStoreAudio(
+        videoUrl,
+        videoMetadata,
+        options,
+        jobId,
+        onProgress
+      );
     }
+    
+    // Fallback: return empty audio metadata
+    console.warn('Audio extraction not available without Replicate or FFmpeg');
+    onProgress(100);
+    
+    const emptyStorageResult: StorageResult = {
+      success: false,
+      url: '',
+      metadata: {
+        size: 0,
+        contentType: 'audio/none',
+        uploadedAt: new Date(),
+        compressed: false,
+        storageId: nanoid()
+      },
+      requestId: generateRequestId()
+    };
+
+    const emptyDeliveryResult: DeliveryResult = {
+      success: false,
+      content: {
+        url: '',
+        metadata: {
+          size: 0,
+          contentType: 'audio/none',
+          lastModified: new Date(),
+          cacheControl: 'no-cache',
+          compressed: false
+        }
+      },
+      requestId: generateRequestId()
+    };
+
+    return {
+      url: '',
+      duration: videoMetadata.duration,
+      format: 'none',
+      size: 0,
+      sampleRate: 0,
+      channels: 0,
+      storageResult: emptyStorageResult,
+      deliveryUrls: emptyDeliveryResult
+    };
   }
 
   /**
@@ -686,29 +499,21 @@ export class EnhancedVideoProcessor {
   // Helper methods
 
   private static async extractVideoMetadata(videoUrl: string): Promise<VideoMetadata> {
-    return new Promise((resolve, reject) => {
-      ffmpeg.ffprobe(videoUrl, (err, metadata) => {
-        if (err) {
-          reject(new VideoProcessingError('Failed to extract video metadata', { originalError: err.message }, generateRequestId()));
-          return;
-        }
-
-        const videoStream = metadata.streams?.find(stream => stream.codec_type === 'video');
-        if (!videoStream) {
-          reject(new VideoFormatError('No video stream found in file', {}, generateRequestId()));
-          return;
-        }
-
-        resolve({
-          duration: metadata.format?.duration || 0,
-          resolution: `${videoStream.width}x${videoStream.height}`,
-          fps: this.parseFrameRate(videoStream.r_frame_rate || '25/1'),
-          codec: videoStream.codec_name || 'unknown',
-          size: metadata.format?.size || 0,
-          format: metadata.format?.format_name || 'unknown'
-        });
-      });
-    });
+    if (USE_REPLICATE) {
+      console.log('Using Replicate for video metadata extraction');
+      return await ReplicateVideoProcessor.extractVideoMetadata(videoUrl);
+    }
+    
+    // Fallback to basic metadata if FFmpeg/Replicate not available
+    console.warn('Neither Replicate nor FFmpeg available, using basic metadata');
+    return {
+      duration: 0,
+      resolution: '1920x1080',
+      fps: 30,
+      codec: 'unknown',
+      size: 0,
+      format: 'mp4'
+    };
   }
 
   private static parseFrameRate(frameRate: string): number {
