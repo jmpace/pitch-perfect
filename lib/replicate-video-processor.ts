@@ -86,7 +86,7 @@ export class ReplicateVideoProcessor {
       console.log('Validating video by extracting a single frame...');
       
       const frameOutput = await replicate.run(
-        "fofr/toolkit" as any,
+        "19711d11c243800f08364ba9ae9078f54874f21363ba445dabdbf082b5d69565" as any,
         {
           input: {
             task: "extract_frames_from_input",
@@ -154,7 +154,7 @@ export class ReplicateVideoProcessor {
       // Use the video-to-frames model for proper frame extraction
       const fps = 1 / options.frameInterval; // Convert interval to frames per second
       const output = await replicate.run(
-        "fofr/video-to-frames" as any,
+        "ad9374d1b385c86948506b3ad287af9fca23e796685221782d9baa2bc43f14a9" as any,
         {
           input: {
             video: videoUrl,
@@ -296,7 +296,7 @@ export class ReplicateVideoProcessor {
       
       // Use toolkit for audio extraction with correct task parameter
       const output = await replicate.run(
-        "fofr/toolkit" as any,
+        "19711d11c243800f08364ba9ae9078f54874f21363ba445dabdbf082b5d69565" as any,
         {
           input: {
             task: "extract_video_audio_as_mp3",
