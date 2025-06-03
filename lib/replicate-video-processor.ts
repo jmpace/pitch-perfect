@@ -369,7 +369,7 @@ export class ReplicateVideoProcessor {
       
       return {
         url: blobResult.url,
-        duration: output.duration || videoMetadata.duration,
+        duration: videoMetadata.duration, // Use video duration since toolkit doesn't return audio metadata
         format: options.audioFormat,
         size: audioBuffer.byteLength,
         sampleRate: 44100, // Default, could be detected from output
