@@ -94,7 +94,7 @@ export class ReplicateVideoProcessor {
             fps: 1 // Extract just 1 frame to validate video
           }
         }
-      ) as string; // This returns a ZIP file URL with frames
+      ) as unknown as string; // This returns a ZIP file URL with frames
       
       // Create basic metadata since we can't probe directly
       // For a production app, you'd want a dedicated metadata extraction service
@@ -162,7 +162,7 @@ export class ReplicateVideoProcessor {
             extract_all_frames: false // Use fps setting instead of all frames
           }
         }
-      ) as ReplicateFrameExtractionOutput;
+      ) as unknown as ReplicateFrameExtractionOutput;
       
       onProgress(40); // Frame extraction complete
       
@@ -303,7 +303,7 @@ export class ReplicateVideoProcessor {
             input_file: videoUrl
           }
         }
-      ) as string; // Returns URL to the extracted audio file
+      ) as unknown as string; // Returns URL to the extracted audio file
       
       onProgress(60); // Audio extraction complete
       
