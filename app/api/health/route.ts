@@ -1,4 +1,5 @@
 // GET /api/health - System health check with enhanced error monitoring
+// Updated to trigger Vercel redeployment for 404 debugging
 import { NextResponse } from 'next/server';
 import { enhancedErrorHandler } from '@/lib/enhanced-error-handling';
 import { VideoProcessor } from '@/lib/video-processor';
