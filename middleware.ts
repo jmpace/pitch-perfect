@@ -108,6 +108,17 @@ function getRateLimitConfigForPath(pathname: string): keyof typeof RATE_LIMIT_CO
  */
 function applyRateLimit(request: NextRequest, response: NextResponse): NextResponse {
   try {
+    // TEMPORARILY DISABLED FOR DEBUGGING - Rate limiting is disabled
+    console.log('[Middleware] Rate limiting temporarily disabled for debugging');
+    
+    // Still add some headers for compatibility
+    response.headers.set('X-RateLimit-Limit', '9999');
+    response.headers.set('X-RateLimit-Remaining', '9999');
+    response.headers.set('X-RateLimit-Reset', String(Date.now() + 300000));
+    
+    return response;
+    
+    /* ORIGINAL RATE LIMITING CODE - TEMPORARILY COMMENTED OUT
     const pathname = request.nextUrl.pathname;
     const configName = getRateLimitConfigForPath(pathname);
     
@@ -146,6 +157,7 @@ function applyRateLimit(request: NextRequest, response: NextResponse): NextRespo
     }
     
     return response;
+    */
     
   } catch (error) {
     // If rate limiting fails, log error but don't block request
