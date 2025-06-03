@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { videoStatusTracker, JobQuery, JobStage } from '@/lib/video-status-tracker';
 import { createErrorResponse, generateRequestId } from '@/lib/errors/handlers';
+import { VideoProcessor } from '@/lib/video-processor';
+import { CleanupService } from '@/lib/cleanup-service';
 
 export interface VideoJobsResponse {
   jobs: Array<{
@@ -249,5 +251,165 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         timestamp: new Date().toISOString()
       }
     }, { status: 500 });
+  }
+}
+
+// POST /api/video/jobs - Manage jobs (stop, cleanup, etc.)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { action, jobIds, cleanupOldJobs = true, force = false } = body;
+
+    const requestId = generateRequestId();
+    let result: any = {};
+
+    switch (action) {
+      case 'stop-all':
+        // This doesn't actually stop server processing (which is fast anyway)
+        // But provides info for users to refresh browsers to stop client polling
+        const currentJobs = await VideoProcessor.getJobs('processing');
+        result = {
+          message: 'Server-side processing jobs cannot be stopped mid-execution, but they complete quickly (30-60s).',
+          currentlyProcessing: currentJobs.length,
+          activeJobs: currentJobs.map(job => ({
+            id: job.id,
+            progress: job.progress,
+            startedAt: job.startedAt
+          })),
+          recommendation: 'Users with active browser polling should refresh their pages to stop client-side requests.'
+        };
+        break;
+
+      case 'cleanup-old':
+        const maxAge = body.maxAge || 24 * 60 * 60 * 1000; // 24 hours default
+        const cleanedJobs = await VideoProcessor.cleanupOldJobs(maxAge);
+        result = {
+          message: `Cleaned up ${cleanedJobs} old jobs`,
+          cleanedCount: cleanedJobs
+        };
+        break;
+
+      case 'cleanup-storage':
+        // Clean up associated blob storage
+        const cleanupReport = await CleanupService.performCleanup({
+          dryRun: !force,
+          force,
+          includeOrphaned: true,
+          maxFiles: 1000
+        });
+        result = {
+          message: force ? 'Storage cleanup completed' : 'Storage cleanup preview (use force=true to execute)',
+          cleanup: cleanupReport
+        };
+        break;
+
+      case 'emergency-stop':
+        if (!force) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Emergency stop requires force=true parameter',
+              requestId 
+            },
+            { status: 400 }
+          );
+        }
+
+        // Emergency cleanup: remove all jobs and clean storage
+        const allJobs = await VideoProcessor.getJobs();
+        const emergencyCleanedJobs = await VideoProcessor.cleanupOldJobs(0); // Clean all jobs
+        const emergencyCleanupReport = await CleanupService.emergencyCleanup(false);
+
+        result = {
+          message: 'Emergency stop completed - all jobs cleared and storage cleaned',
+          jobsCleared: emergencyCleanedJobs,
+          previousJobCount: allJobs.length,
+          storageCleanup: emergencyCleanupReport,
+          warning: 'Users with active browser polling should refresh their pages to stop client-side requests.'
+        };
+        break;
+
+      default:
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Invalid action. Supported actions: stop-all, cleanup-old, cleanup-storage, emergency-stop',
+            requestId 
+          },
+          { status: 400 }
+        );
+    }
+
+    const stats = await VideoProcessor.getStats();
+
+    return NextResponse.json({
+      success: true,
+      action,
+      result,
+      currentStats: stats,
+      timestamp: new Date().toISOString(),
+      requestId
+    });
+
+  } catch (error) {
+    console.error('Failed to manage video jobs:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to manage video jobs',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        requestId: generateRequestId()
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/video/jobs - Clean up all jobs (alias for emergency-stop)
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get('force') === 'true';
+
+    if (!force) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'DELETE requires force=true parameter',
+          requestId: generateRequestId()
+        },
+        { status: 400 }
+      );
+    }
+
+    // Perform emergency cleanup
+    const allJobs = await VideoProcessor.getJobs();
+    const cleanedJobs = await VideoProcessor.cleanupOldJobs(0);
+    const cleanupReport = await CleanupService.emergencyCleanup(false);
+
+    return NextResponse.json({
+      success: true,
+      message: 'All jobs and storage cleaned up',
+      jobsCleared: cleanedJobs,
+      previousJobCount: allJobs.length,
+      storageCleanup: cleanupReport,
+      warning: 'Users with active browser polling should refresh their pages.',
+      timestamp: new Date().toISOString(),
+      requestId: generateRequestId()
+    });
+
+  } catch (error) {
+    console.error('Failed to delete video jobs:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to delete video jobs',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        requestId: generateRequestId()
+      },
+      { status: 500 }
+    );
   }
 } 

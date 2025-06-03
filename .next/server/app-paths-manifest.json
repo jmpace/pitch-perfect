@@ -1,3 +1,4 @@
 {
-  "/api/video/result/[jobId]/route": "app/api/video/result/[jobId]/route.js"
+  "/api/video/process/route": "app/api/video/process/route.js",
+  "/api/video/status/[jobId]/route": "app/api/video/status/[jobId]/route.js"
 }

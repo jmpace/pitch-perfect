@@ -29,7 +29,7 @@ export async function GET(
       );
     }
 
-    const job = VideoProcessor.getJob(jobId);
+    const job = await VideoProcessor.getJob(jobId);
     if (!job) {
       throw new ProcessingJobNotFoundError(
         `Processing job ${jobId} not found`,

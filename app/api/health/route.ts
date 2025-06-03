@@ -43,25 +43,23 @@ interface CircuitBreakerHealth {
 const startTime = Date.now();
 
 async function healthHandler(): Promise<NextResponse<HealthCheckResponse>> {
-  const requestId = generateRequestId();
   const timestamp = new Date().toISOString();
+  const requestId = generateRequestId();
   
   try {
-    // Check video processor health
+    // Check all services health
     const videoProcessorHealth = await checkVideoProcessorHealth();
-    
-    // Check error handling system health
     const errorHandlingHealth = checkErrorHandlingHealth();
-    
-    // Get system metrics
     const systemHealth = enhancedErrorHandler.getSystemHealth();
-    const processingStats = VideoProcessor.getStats();
+    const circuitBreakerMetrics = transformCircuitBreakerMetrics(systemHealth.circuitBreakers);
     
-    // Determine overall system status
+    // Get processing statistics
+    const processingStats = await VideoProcessor.getStats();
+    
     const services = {
       videoProcessor: videoProcessorHealth,
       errorHandling: errorHandlingHealth,
-      circuitBreakers: transformCircuitBreakerMetrics(systemHealth.circuitBreakers)
+      circuitBreakers: circuitBreakerMetrics
     };
     
     const overallStatus = determineOverallStatus(services);
@@ -136,7 +134,7 @@ export const { GET, OPTIONS } = corsHandlers;
 
 async function checkVideoProcessorHealth(): Promise<ServiceHealth> {
   try {
-    const stats = VideoProcessor.getStats();
+    const stats = await VideoProcessor.getStats();
     
     // Check if there are too many failed jobs
     const failureRate = stats.totalJobs > 0 ? 

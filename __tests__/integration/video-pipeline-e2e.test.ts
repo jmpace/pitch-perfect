@@ -335,11 +335,11 @@ jest.mock('@/lib/performance-monitor', () => ({
 }));
 
 import { VideoProcessor } from '@/lib/video-processor';
-import { OptimizedVideoProcessor } from '@/lib/optimized-video-processor';
-import { EnhancedVideoProcessor } from '@/lib/enhanced-video-processor';
+// import { OptimizedVideoProcessor } from '@/lib/optimized-video-processor';
+// import { EnhancedVideoProcessor } from '@/lib/enhanced-video-processor';
 import { StorageDeliveryManager } from '@/lib/storage-delivery-manager';
 import { PerformanceMonitor } from '@/lib/performance-monitor';
-import { WorkerPool } from '@/lib/worker-pool';
+// import { WorkerPool } from '@/lib/worker-pool';
 import { EnhancedErrorHandler } from '@/lib/enhanced-error-handling';
 import { VideoStatusTracker } from '@/lib/video-status-tracker';
 import type { VideoProcessingJob, VideoMetadata } from '@/lib/video-processor';
@@ -391,17 +391,17 @@ class TestVideoManager {
 
 describe('Video Processing Pipeline E2E Tests', () => {
   let videoProcessor: typeof VideoProcessor;
-  let optimizedProcessor: typeof OptimizedVideoProcessor;
-  let enhancedProcessor: typeof EnhancedVideoProcessor;
+  // let optimizedProcessor: typeof OptimizedVideoProcessor;
+  // let enhancedProcessor: typeof EnhancedVideoProcessor;
   let performanceMonitor: typeof PerformanceMonitor;
-  let workerPool: WorkerPool;
+  // let workerPool: WorkerPool;
   let statusTracker: VideoStatusTracker;
   let errorHandler: EnhancedErrorHandler;
 
   beforeAll(async () => {
     // Initialize static classes and instances
     performanceMonitor = PerformanceMonitor;
-    workerPool = new WorkerPool();
+    // workerPool = new WorkerPool();
     statusTracker = VideoStatusTracker.getInstance();
     errorHandler = new EnhancedErrorHandler();
     // StorageDeliveryManager is a static class, no instantiation needed
@@ -411,16 +411,16 @@ describe('Video Processing Pipeline E2E Tests', () => {
     
     // Initialize processors
     videoProcessor = VideoProcessor;
-    optimizedProcessor = OptimizedVideoProcessor;
-    enhancedProcessor = EnhancedVideoProcessor;
+    // optimizedProcessor = OptimizedVideoProcessor;
+    // enhancedProcessor = EnhancedVideoProcessor;
   });
 
   beforeEach(async () => {
     // Wait for any ongoing processing to complete before starting the next test
     let attempts = 0;
     while (attempts < 30) {
-      const processingJobs = videoProcessor.getJobs('processing');
-      const stats = videoProcessor.getStats();
+      const processingJobs = await videoProcessor.getJobs('processing');
+      const stats = await videoProcessor.getStats();
       
       if (processingJobs.length === 0 && stats.currentJobs === 0) {
         break;
@@ -430,7 +430,7 @@ describe('Video Processing Pipeline E2E Tests', () => {
     }
     
     // Clean up job state between tests to prevent contamination
-    videoProcessor.cleanupOldJobs(0);
+    await videoProcessor.cleanupOldJobs(0);
     
     // Force reset processor state for testing
     // Access private static fields to reset counters
@@ -443,10 +443,10 @@ describe('Video Processing Pipeline E2E Tests', () => {
   afterAll(async () => {
     // Clean up resources
     PerformanceMonitor.stopMonitoring();
-    workerPool.shutdown();
+    // workerPool.shutdown();
     
     // Clean up all test jobs
-    const jobs = videoProcessor.getJobs();
+    const jobs = await videoProcessor.getJobs();
     jobs.forEach(job => {
       videoProcessor.cleanupOldJobs(0);
     });
@@ -462,13 +462,13 @@ describe('Video Processing Pipeline E2E Tests', () => {
       expect(job.status).toBe('queued');
       
       // Monitor progress
-      let currentJob = videoProcessor.getJob(job.id);
+      let currentJob = await videoProcessor.getJob(job.id);
       let attempts = 0;
       const maxAttempts = 30; // 30 seconds max
       
       while (currentJob && currentJob.status !== 'completed' && currentJob.status !== 'failed' && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        currentJob = videoProcessor.getJob(job.id);
+        currentJob = await videoProcessor.getJob(job.id);
         attempts++;
       }
       

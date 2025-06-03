@@ -50,7 +50,8 @@ interface VideoProcessingResult {
 
 async function fetchJobResults(jobId: string): Promise<VideoProcessingResult | null> {
   try {
-    const response = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3003'}/api/video/result/${jobId}`, {
+    // Use relative URL for same-origin requests, which works in both development and production
+    const response = await fetch(`/api/video/result/${jobId}`, {
       headers: {
         'Content-Type': 'application/json',
       },

@@ -32,14 +32,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Validate URL format
-    try {
-      new URL(body.videoUrl);
-    } catch {
-      throw new ValidationError(
-        'Invalid video URL format',
-        { videoUrl: body.videoUrl }
-      );
+    // Validate URL format (allow local file paths for testing)
+    const isLocalFile = body.videoUrl.startsWith('/') || body.videoUrl.match(/^[A-Z]:/); // Unix or Windows absolute paths
+    if (!isLocalFile) {
+      try {
+        new URL(body.videoUrl);
+      } catch {
+        throw new ValidationError(
+          'Invalid video URL format',
+          { videoUrl: body.videoUrl }
+        );
+      }
     }
 
     // Start processing

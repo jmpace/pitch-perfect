@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { validateFileDetailed, type FileValidationResult } from "@/lib/validation";
 import { AlertCircle, CheckCircle, AlertTriangle, Upload, X, Loader2 } from "lucide-react";
 import { useSanitizedFile } from "@/lib/sanitization/client";
+import PollingManager from '@/lib/polling-manager';
 
 type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'error' | 'cancelled';
 
@@ -36,6 +37,13 @@ export default function UploadPage() {
   const [processingStage, setProcessingStage] = useState<ProcessingStage | null>(null);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
 
+  // Polling cleanup ref
+  const pollingActive = useRef(false);
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Get singleton polling manager
+  const pollingManager = PollingManager.getInstance();
+
   // Analysis options
   const [analysisOptions, setAnalysisOptions] = useState({
     contentAnalysis: true,
@@ -46,6 +54,20 @@ export default function UploadPage() {
 
   // Sanitization hooks
   const { createSanitizedFile, isDangerousFilename } = useSanitizedFile();
+
+  // Cleanup polling when component unmounts
+  useEffect(() => {
+    return () => {
+      // Stop polling when component unmounts
+      pollingActive.current = false;
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+      // Stop all polling managed by this component
+      pollingManager.stopAllPolling();
+    };
+  }, [pollingManager]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -137,7 +159,31 @@ export default function UploadPage() {
     }
   };
 
+  const cancelUpload = () => {
+    // Stop polling if active
+    pollingActive.current = false;
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+    // Stop all polling
+    pollingManager.stopAllPolling();
+    
+    setUploadStatus('cancelled');
+    setUploadError('Upload cancelled by user');
+    setUploadProgress(0);
+  };
+
   const clearFile = () => {
+    // Stop polling if active
+    pollingActive.current = false;
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+    // Stop all polling
+    pollingManager.stopAllPolling();
+    
     setFile(null);
     setValidationResult(null);
     setUploadProgress(0);
@@ -148,12 +194,6 @@ export default function UploadPage() {
     if (fileInput) {
       fileInput.value = '';
     }
-  };
-
-  const cancelUpload = () => {
-    setUploadStatus('cancelled');
-    setUploadError('Upload cancelled by user');
-    setUploadProgress(0);
   };
 
   // Real video processing function
@@ -227,8 +267,8 @@ export default function UploadPage() {
       setJobId(processResult.jobId);
       setEstimatedTimeRemaining(processResult.estimatedTime);
 
-      // Step 4: Poll for processing status
-      pollProcessingStatus(processResult.jobId);
+      // Step 4: Poll for processing status with rate limiting protection
+      pollProcessingStatus(processResult.jobId, blob.url);
 
     } catch (error) {
       setUploadStatus('error');
@@ -238,17 +278,151 @@ export default function UploadPage() {
     }
   };
 
-  // Poll for processing status
-  const pollProcessingStatus = async (jobId: string) => {
-    const pollInterval = setInterval(async () => {
+  // Poll for processing status with rate limiting protection
+  const pollProcessingStatus = async (jobId: string, videoUrl: string) => {
+    // Prevent multiple polling loops for the same job using singleton manager
+    if (!pollingManager.startPolling(jobId)) {
+      console.log(`[client-polling] Already polling job ${jobId} - skipping duplicate`);
+      return;
+    }
+    
+    // Generate unique poll session ID for debugging
+    const pollSessionId = `poll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[client-polling] Starting new poll session ${pollSessionId} for job ${jobId}`);
+    
+    let pollInterval = 20000; // 20 seconds
+    let consecutiveErrors = 0;
+    const maxRetries = 5;
+    
+    // Set polling as active
+    pollingActive.current = true;
+    
+    // Store initial job data in localStorage as backup
+    const initialJobData = {
+      id: jobId,
+      videoUrl: videoUrl,
+      status: 'processing',
+      progress: 0,
+      createdAt: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
+      requestId: `upload_${Date.now()}`
+    };
+    
+    localStorage.setItem(`job_${jobId}`, JSON.stringify(initialJobData));
+    
+    // Cleanup function to remove from registry
+    const cleanup = () => {
+      pollingActive.current = false;
+      pollingManager.stopPolling(jobId);
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+    };
+    
+    const poll = async () => {
+      // Stop polling if component unmounted or polling was cancelled
+      if (!pollingActive.current) {
+        console.log('Polling stopped - component unmounted');
+        cleanup();
+        return;
+      }
+      
       try {
-        const statusResponse = await fetch(`/api/video/status/${jobId}`);
+        // Use PollingManager to throttle requests and prevent duplicates
+        if (!pollingManager.canMakeRequest(jobId)) {
+          console.log(`[client-polling] Session ${pollSessionId} - Request throttled for job ${jobId}`);
+          // Schedule next poll without making a request
+          if (pollingActive.current) {
+            pollingTimeoutRef.current = setTimeout(poll, pollInterval);
+          }
+          return;
+        }
+        
+        console.log(`[client-polling] Session ${pollSessionId} - Making request for job ${jobId}`);
+        
+        // First try GET request (works if server has job data)
+        let statusResponse = await fetch(`/api/video/status/${jobId}`);
+        
+        // Check again after async operation
+        if (!pollingActive.current) return;
+        
+        // If GET fails with 404, try POST with local job data
+        if (statusResponse.status === 404) {
+          const localJobData = localStorage.getItem(`job_${jobId}`);
+          if (localJobData) {
+            statusResponse = await fetch(`/api/video/status/${jobId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                jobData: JSON.parse(localJobData)
+              })
+            });
+          }
+        }
+        
+        // Check again after async operation
+        if (!pollingActive.current) return;
+        
+        // Handle rate limiting specifically
+        if (statusResponse.status === 429) {
+          consecutiveErrors++;
+          
+          // Much longer exponential backoff for rate limits: 60s, 2min, 5min, 10min
+          const backoffDelay = Math.min(60000 * Math.pow(2, consecutiveErrors - 1), 600000);
+          console.log(`Rate limited. Backing off for ${backoffDelay / 1000}s...`);
+          
+          // After 3 consecutive rate limit errors, stop polling and show manual option
+          if (consecutiveErrors >= 3) {
+            setUploadError('Processing status temporarily unavailable due to high server load. Your video is still processing in the background.');
+            setUploadStatus('error');
+            // Store jobId so user can manually check results
+            if (jobId) {
+              localStorage.setItem('pendingJobId', jobId);
+            }
+            cleanup(); // Stop polling and clean up registry
+            return;
+          }
+          
+          if (pollingActive.current) {
+            pollingTimeoutRef.current = setTimeout(poll, backoffDelay);
+          }
+          return;
+        }
         
         if (!statusResponse.ok) {
-          throw new Error('Failed to get processing status');
+          throw new Error(`Failed to get processing status: ${statusResponse.status}`);
         }
 
+        // Reset error count on successful response
+        consecutiveErrors = 0;
+        pollInterval = 20000; // Reset to normal interval
+
         const status = await statusResponse.json();
+        
+        // Log detailed response for debugging
+        console.log(`[client-polling] Session ${pollSessionId} - Job ${jobId} response:`, {
+          status: status.status,
+          progress: status.progress,
+          currentStage: status.currentStage,
+          estimatedTimeRemaining: status.estimatedTimeRemaining,
+          error: status.error
+        });
+        
+        // Check again after async operation
+        if (!pollingActive.current) return;
+        
+        // Update local job data with latest status
+        const updatedJobData = {
+          ...JSON.parse(localStorage.getItem(`job_${jobId}`) || '{}'),
+          status: status.status,
+          progress: status.progress,
+          error: status.error,
+          results: status.results
+        };
+        localStorage.setItem(`job_${jobId}`, JSON.stringify(updatedJobData));
         
         // Update progress and stage
         setUploadProgress(status.progress);
@@ -294,36 +468,75 @@ export default function UploadPage() {
 
         // Handle completion
         if (status.status === 'completed') {
-          clearInterval(pollInterval);
           setUploadStatus('success');
           setUploadProgress(100);
+          cleanup(); // Stop polling and clean up registry
           
           // Don't automatically redirect - let user click button instead
           // This prevents issues with navigation and gives user control
           console.log(`Analysis complete for job ${jobId}. Ready to view results.`);
+          return; // Stop polling
         }
 
         // Handle failure
         if (status.status === 'failed') {
-          clearInterval(pollInterval);
           setUploadStatus('error');
           setUploadError(status.error || 'Processing failed');
+          cleanup(); // Stop polling and clean up registry
+          return; // Stop polling
+        }
+
+        // Continue polling if still processing and component is mounted
+        if (pollingActive.current) {
+          pollingTimeoutRef.current = setTimeout(poll, pollInterval);
         }
 
       } catch (error) {
         console.error('Status polling error:', error);
-        // Don't immediately fail on polling errors, retry a few times
+        
+        // Check if component still mounted before updating state
+        if (!pollingActive.current) return;
+        
+        consecutiveErrors++;
+        
+        // If we've had too many consecutive errors, stop polling
+        if (consecutiveErrors >= maxRetries) {
+          setUploadError('Unable to check processing status. Please check results page or try again.');
+          setUploadStatus('error');
+          cleanup(); // Stop polling and clean up registry
+          return;
+        }
+        
+        // Exponential backoff for errors: 60s, 2min, 5min
+        const backoffDelay = Math.min(60000 * Math.pow(2, consecutiveErrors - 1), 300000);
+        console.log(`Polling error. Retrying in ${backoffDelay / 1000}s... (${consecutiveErrors}/${maxRetries})`);
+        
+        if (pollingActive.current) {
+          pollingTimeoutRef.current = setTimeout(poll, backoffDelay);
+        }
       }
-    }, 3000); // Poll every 3 seconds
+    };
 
-    // Clear interval after 10 minutes (fallback)
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      if (uploadStatus === 'processing') {
+    // Start polling
+    poll();
+
+    // Clear polling after 10 minutes (fallback)
+    const fallbackTimeout = setTimeout(() => {
+      if (pollingActive.current && uploadStatus === 'processing') {
         setUploadError('Processing timeout. Please check results page or try again.');
         setUploadStatus('error');
+        pollingActive.current = false;
       }
     }, 600000); // 10 minutes
+    
+    // Clean up fallback timeout when polling stops
+    const originalPollingActive = pollingActive.current;
+    const cleanupInterval = setInterval(() => {
+      if (!pollingActive.current && originalPollingActive) {
+        clearTimeout(fallbackTimeout);
+        clearInterval(cleanupInterval);
+      }
+    }, 1000);
   };
 
   const handleAnalyze = async () => {
@@ -666,6 +879,17 @@ export default function UploadPage() {
                 <CheckCircle className="mr-2 h-4 w-4" />
                 View Analysis Results
               </Button>
+            ) : uploadStatus === 'error' && uploadError?.includes('temporarily unavailable') && jobId ? (
+              // Show Check Results button when rate limiting stops polling
+              <Button 
+                onClick={() => router.push(`/results/${jobId}`)}
+                className="flex-1"
+                size="lg"
+                variant="default"
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Check Results
+              </Button>
             ) : (
               // Show Start Analysis button when ready to upload
               <Button 
@@ -696,6 +920,16 @@ export default function UploadPage() {
             {/* Secondary action button */}
             {uploadStatus === 'success' && jobId ? (
               // Show Upload Another button when processing is complete
+              <Button 
+                onClick={clearFile}
+                variant="outline" 
+                className="flex-1" 
+                size="lg"
+              >
+                Upload Another
+              </Button>
+            ) : uploadStatus === 'error' && uploadError?.includes('temporarily unavailable') ? (
+              // Show Upload Another button when rate limiting stops polling
               <Button 
                 onClick={clearFile}
                 variant="outline" 
